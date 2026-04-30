@@ -1,0 +1,23 @@
+# Legacy / not applicable to LAFISE workshop
+patch_workshop_data.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.venv/
+venv/
