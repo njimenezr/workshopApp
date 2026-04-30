@@ -3,62 +3,62 @@
     {
       "id": "data-engineering",
       "title": "Data Engineering",
-      "subtitle": "Acelera tus pipelines con Genie Code",
-      "description": "Usa Genie Code para generar pipelines PySpark, automatizar migraciones, reconciliar datos entre fuentes, y crear Jobs — todo desde lenguaje natural.",
+      "subtitle": "Acelera tus pipelines bancarios con Genie Code",
+      "description": "Usa Genie Code para generar pipelines PySpark para datos financieros, automatizar la ingesta de transacciones, reconciliar cartera entre sistemas, orquestar Jobs nocturnos, y construir Knowledge Assistants sobre la cartera — todo desde lenguaje natural.",
       "icon": "⚙️",
       "color": "#FF6D00",
       "estimatedMinutes": 105,
-      "participantCount": 17,
+      "participantCount": 0,
       "steps": [
         {
           "id": "eng-step-1",
           "stepNumber": 1,
           "title": "Explora tu landscape de datos",
           "description": "Abre un notebook nuevo y activa Genie Code (botón ✨ arriba a la derecha). Usa el siguiente prompt para explorar las tablas del workshop.",
-          "prompt": "Muéstrame todas las tablas disponibles en el catálogo workshop, schema gold. Para cada tabla muéstrame:\n1. Nombre de la tabla\n2. Número de filas\n3. Lista de columnas con sus tipos\n4. 3 filas de ejemplo\n\nFormatea todo como tablas legibles.",
-          "expectedOutput": "Una o más celdas que muestran las 5 tablas (dim_restaurants, fact_daily_sales, fact_member_activity, fact_promo_events, fact_daily_kpis) con sus schemas y datos de ejemplo.",
+          "prompt": "Muéstrame todas las tablas disponibles en el catálogo workshop, schema gold. Para cada tabla muéstrame:\n1. Nombre de la tabla\n2. Número de filas\n3. Lista de columnas con sus tipos de datos\n4. 3 filas de ejemplo\n\nFormatea todo como tablas legibles.",
+          "expectedOutput": "Una o más celdas que muestran las 5 tablas (dim_clientes, dim_sucursales, fact_transacciones, fact_cartera_creditos, fact_kpis_diarios) con sus schemas y datos de ejemplo.",
           "tips": [
-            "Si Genie Code no responde, asegúrate de tener un cluster activo asignado al notebook.",
-            "Si no ves las tablas, verifica que tienes acceso al catálogo 'workshop'."
+            "Si Genie Code no responde, verifica que tienes un cluster activo asignado al notebook.",
+            "Si no ves las tablas, avisa al facilitador — necesitas permisos USE CATALOG y SELECT en workshop.gold."
           ],
           "warningNote": null
         },
         {
           "id": "eng-step-2",
           "stepNumber": 2,
-          "title": "Genera un pipeline de ingestión completo",
-          "description": "Imagina que recibes un CSV con datos de un nuevo mercado. Usa Genie Code para generar un pipeline completo bronze → silver → gold siguiendo la arquitectura medallion.",
-          "prompt": "Genera un pipeline PySpark completo para ingestar datos de restaurantes desde un CSV. El pipeline debe seguir la arquitectura medallion:\n\n1. **Bronze**: Lee el CSV desde /Volumes/workshop/raw/new_restaurants.csv con schema inference. Guárdalo como tabla Delta en workshop.bronze.restaurants_raw con modo overwrite.\n\n2. **Silver**: Lee la tabla bronze. Aplica estas transformaciones:\n   - Elimina duplicados por restaurant_id\n   - Valida que market no sea null (filtra los null)\n   - Convierte opening_date a tipo DATE\n   - Estandariza restaurant_type a Title Case\n   Guarda en workshop.silver.restaurants_cleaned\n\n3. **Gold**: Lee la tabla silver. Agrega:\n   - Conteo de restaurantes por market y restaurant_type\n   - Fecha del restaurante más antiguo y más nuevo por market\n   Guarda en workshop.gold.restaurants_summary\n\nIncluye TBLPROPERTIES con 'layer' y 'quality' en cada tabla. Habilita Change Data Feed.",
-          "expectedOutput": "3 celdas de código PySpark, una por capa (bronze, silver, gold). Cada una con spark.read, transformaciones, y write con TBLPROPERTIES.",
+          "title": "Pipeline medallion para ingesta de transacciones",
+          "description": "El equipo de pagos recibe un CSV diario del core bancario con transacciones nuevas. Usa Genie Code para generar el pipeline de ingesta completo siguiendo la arquitectura medallion.",
+          "prompt": "Genera un pipeline PySpark completo para ingestar transacciones financieras desde un CSV. El pipeline debe seguir la arquitectura medallion:\n\n1. **Bronze**: Lee el CSV desde /Volumes/workshop/raw/transacciones_nuevas.csv con schema inference. Guárdalo como tabla Delta en workshop.bronze.transacciones_raw con modo overwrite.\n\n2. **Silver**: Lee la tabla bronze. Aplica estas transformaciones:\n   - Elimina duplicados por transaction_id\n   - Filtra registros con amount <= 0 o NULL\n   - Convierte transaction_date a tipo DATE\n   - Estandariza transaction_type a Title Case\n   - Normaliza channel a mayúsculas\n   Guarda en workshop.silver.transacciones_clean\n\n3. **Gold**: Lee la tabla silver. Calcula por customer_id y mes:\n   - total_transactions: conteo de transacciones\n   - total_amount: suma de amount\n   - avg_ticket: promedio de amount\n   - top_channel: canal más frecuente (usa mode)\n   Guarda en workshop.gold.transacciones_mensual\n\nIncluye TBLPROPERTIES con 'layer', 'domain' = 'payments', y 'classification' = 'confidential' en cada tabla. Habilita Change Data Feed.",
+          "expectedOutput": "3 celdas de código PySpark, una por capa. Cada una con spark.read, transformaciones, y write con TBLPROPERTIES que incluyen la clasificación 'confidential' — requerida por política de datos bancarios.",
           "tips": [
-            "Si el CSV no existe, Genie Code debería generar el código de todas formas. Puedes adaptar la fuente después.",
-            "Revisa que cada tabla tenga 3 partes: catalog.schema.table"
+            "Si el CSV no existe, Genie Code genera el código de todas formas. La lógica es lo que importa.",
+            "El campo 'classification' = 'confidential' en TBLPROPERTIES es la forma de etiquetar sensibilidad en Unity Catalog."
           ],
           "warningNote": null
         },
         {
           "id": "eng-step-3",
           "stepNumber": 3,
-          "title": "Reconcilia datos entre dos fuentes",
-          "description": "Uno de los desafíos más comunes en Data Engineering es validar que dos tablas que deberían contener los mismos datos realmente coinciden. Usa Genie Code para generar código de reconciliación.",
-          "prompt": "Escribe un notebook PySpark que reconcilie datos entre dos tablas: workshop.gold.dim_restaurants y workshop.gold.fact_member_activity.\n\nEl reporte de reconciliación debe incluir:\n1. Restaurantes en dim_restaurants que NO tienen actividad de miembros en fact_member_activity (huérfanos en dimensión)\n2. restaurant_ids en fact_member_activity que NO existen en dim_restaurants (huérfanos en hechos)\n3. Para los restaurantes que sí coinciden: conteo de actividades, order_value total, y fecha más reciente\n4. Un resumen con: total matches, total huérfanos dimensión, total huérfanos hechos\n\nFormatea el resultado como tablas con display().",
-          "expectedOutput": "Un notebook con 4 celdas: LEFT ANTI JOIN para huérfanos en dimensión, LEFT ANTI JOIN inverso para huérfanos en hechos (~80 filas con REST-ZZ-*), INNER JOIN con métricas, y un resumen final.",
+          "title": "Reconcilia core bancario vs. DWH",
+          "description": "Uno de los retos más comunes en banca es validar que los datos del core bancario llegaron completos al DWH. Usa Genie Code para generar el código de reconciliación.",
+          "prompt": "Escribe un notebook PySpark que reconcilie datos entre workshop.gold.dim_clientes y workshop.gold.fact_transacciones.\n\nEl reporte de reconciliación debe incluir:\n1. Clientes en dim_clientes SIN transacciones en fact_transacciones (clientes inactivos o no migrados)\n2. customer_ids en fact_transacciones que NO existen en dim_clientes (posibles registros con datos de clientes sin enmascarar o errores de migración — riesgo de cumplimiento)\n3. Para los clientes con actividad: total de transacciones, monto total, fecha de la última transacción, canal más usado\n4. Un resumen ejecutivo: total clientes activos, inactivos, referencias rotas\n\nFormatea todos los resultados con display(). Agrega un comentario sobre las implicaciones regulatorias de las referencias rotas.",
+          "expectedOutput": "Un notebook con 4 secciones: LEFT ANTI JOIN para inactivos, LEFT ANTI JOIN inverso para referencias rotas (~60 registros con IDs LAFISE-XX-*), INNER JOIN con métricas por cliente, y resumen final.",
           "tips": [
-            "Este patrón es exactamente lo que necesitas para validar migraciones de Oracle Fusion o ADF → Databricks.",
-            "Puedes adaptar los JOINs a cualquier par de tablas que necesites reconciliar."
+            "Este patrón es exactamente lo que necesitas para validar migraciones de core bancario a Databricks.",
+            "Las referencias rotas en datos financieros deben reportarse al equipo de compliance — impactan los reportes regulatorios."
           ],
           "warningNote": null
         },
         {
           "id": "eng-step-4",
           "stepNumber": 4,
-          "title": "Genera la definición de un Databricks Job",
-          "description": "Los pipelines necesitan orquestación. Usa Genie Code para generar la configuración de un Job multi-tarea que ejecute tu pipeline de Step 2.",
-          "prompt": "Genera el código Python usando el Databricks SDK para crear un Job con 3 tareas encadenadas:\n\n1. Tarea 'ingest_bronze': ejecuta un notebook en /Workspace/Users/{current_user}/workshop/01_bronze\n2. Tarea 'transform_silver': ejecuta /Workspace/Users/{current_user}/workshop/02_silver, depende de ingest_bronze\n3. Tarea 'aggregate_gold': ejecuta /Workspace/Users/{current_user}/workshop/03_gold, depende de transform_silver\n\nConfiguraciones:\n- Cluster: nuevo job cluster con Photon, node type Standard_DS3_v2, 1 worker\n- Schedule: cron diario a las 6am UTC\n- Timeout: 30 minutos por tarea\n- Notificaciones: email a mi usuario si falla\n\nUsa databricks.sdk.service.jobs para crear el Job.",
-          "expectedOutput": "Código Python con WorkspaceClient() que define las 3 tareas con dependencias, cluster config, schedule, y crea el Job vía API.",
+          "title": "Orquesta el pipeline como Job nocturno",
+          "description": "Los pipelines bancarios deben ejecutarse antes de la apertura de los sistemas. Usa Genie Code para generar la definición del Job con el SDK de Databricks.",
+          "prompt": "Genera el código Python usando el Databricks SDK para crear un Job de procesamiento nocturno del pipeline de pagos:\n\n1. Tarea 'ingest_bronze': ejecuta notebook /Workspace/Users/{current_user}/lafise/01_ingest\n2. Tarea 'transform_silver': ejecuta /Workspace/Users/{current_user}/lafise/02_transform, depende de ingest_bronze\n3. Tarea 'aggregate_gold': ejecuta /Workspace/Users/{current_user}/lafise/03_aggregate, depende de transform_silver\n\nConfiguraciones:\n- Cluster: job cluster con Photon habilitado, 2 workers mínimo\n- Schedule: cron diario a las 03:00 UTC (antes de apertura de sistemas bancarios a las 6am local)\n- Timeout: 90 minutos por tarea (SLA de procesamiento nocturno)\n- Notificaciones: email al equipo de datos si falla cualquier tarea\n- Tags: 'criticality' = 'high', 'domain' = 'payments', 'environment' = 'production'\n\nUsa databricks.sdk.service.jobs para crear el Job.",
+          "expectedOutput": "Código Python con WorkspaceClient() que define las 3 tareas con dependencias, schedule 3am UTC, tags de criticality, y crea el Job retornando el job_id.",
           "tips": [
-            "No necesitas ejecutar esto ahora — el objetivo es ver cómo Genie Code genera definiciones de Jobs complejas.",
-            "Puedes adaptar los paths de notebooks a tus propios pipelines."
+            "El schedule 3am UTC corresponde aproximadamente a las 9pm-10pm hora centroamericana — antes del procesamiento de cierre.",
+            "Los tags permiten filtrar Jobs por dominio en el UI de Databricks."
           ],
           "warningNote": null
         },
@@ -66,38 +66,38 @@
           "id": "eng-step-5",
           "stepNumber": 5,
           "title": "Depura y optimiza código existente",
-          "description": "En tu día a día, pasas tiempo leyendo y arreglando código que otros escribieron. Practica el patrón 'error → Genie Code → fix'.",
-          "prompt": "El siguiente código PySpark tiene problemas de rendimiento y bugs. Identifica TODOS los problemas, explica cada uno, y genera la versión corregida:\n\n```python\nfrom pyspark.sql.functions import *\n\n# Leer ventas\ndf = spark.read.table(\"workshop.gold.fact_daily_sales\")\n\n# Filtrar último mes\ndf_filtered = df.filter(df.sale_date > \"2026-03-01\")\n\n# Calcular revenue por restaurante\nresult = df_filtered.groupBy(\"restaurant_id\").agg(\n    sum(\"gross_revenue\").alias(\"total_revenue\"),\n    avg(\"avg_ticket\").alias(\"avg_ticket\"),\n    count(\"*\").alias(\"days\")\n)\n\n# Join con dimensión (PROBLEMA: broadcast no especificado)\ndim = spark.read.table(\"workshop.gold.dim_restaurants\")\nfinal = result.join(dim, \"restaurant_id\")\n\n# Convertir todo a pandas para graficar\npdf = final.toPandas()\npdf.sort_values(\"total_revenue\", ascending=False).head(20)\n```",
-          "expectedOutput": "Genie Code debe identificar: (1) filtro de fecha como string vs. date, (2) falta de broadcast hint en el join con tabla pequeña, (3) toPandas() sobre dataset grande sin limit, (4) falta de cache si se reutiliza, (5) posible skew en groupBy. La versión corregida incluye estos fixes.",
+          "description": "En el día a día recibirás código de compañeros o heredarás scripts antiguos. Practica el patrón 'error → Genie Code → fix' con un script de análisis de cartera.",
+          "prompt": "El siguiente código PySpark tiene problemas de rendimiento y bugs. Identifica TODOS los problemas considerando el contexto financiero, explica cada uno, y genera la versión corregida:\n\n```python\nfrom pyspark.sql.functions import *\n\n# Leer cartera de créditos\ndf = spark.read.table(\"workshop.gold.fact_cartera_creditos\")\n\n# Filtrar desembolsos del último trimestre\ndf_filtered = df.filter(df.disbursement_date > \"2026-01-01\")\n\n# Calcular mora por país\nresult = df_filtered.groupBy(\"country_code\").agg(\n    sum(\"outstanding_balance\").alias(\"total_cartera\"),\n    sum(when(col(\"days_past_due\") > 30, col(\"outstanding_balance\")).otherwise(0)).alias(\"cartera_vencida\"),\n    count(\"*\").alias(\"num_creditos\")\n)\n\n# Join con dimensión\ndim = spark.read.table(\"workshop.gold.dim_sucursales\")\nfinal = result.join(dim, \"country_code\")\n\n# Exportar para reporte\npdf = final.toPandas()\npdf.sort_values(\"total_cartera\", ascending=False)\n```",
+          "expectedOutput": "Genie Code debe identificar: (1) filtro de fecha como string — puede fallar según el tipo de columna, (2) falta de broadcast hint para dim_sucursales (tabla pequeña), (3) toPandas() sin LIMIT en tabla financiera potencialmente grande, (4) el join por country_code puede generar duplicados si hay múltiples sucursales por país, (5) falta de cálculo explícito de tasa de mora (cartera_vencida / total_cartera). Versión corregida incluye todos los fixes.",
           "tips": [
-            "Este es el patrón más útil del día a día: pegar código problemático y pedir diagnóstico.",
-            "Puedes usar esto con cualquier notebook que te compartan — pégalo y pide revisión."
+            "El bug del join con dim_sucursales es especialmente importante: genera filas multiplicadas que inflan las sumas de cartera.",
+            "En contexto regulatorio, un reporte con cartera inflada puede resultar en requerimientos de capital incorrectos."
           ],
           "warningNote": null
         },
         {
           "id": "eng-step-6",
           "stepNumber": 6,
-          "title": "Construye un Knowledge Assistant con FMAPI",
-          "description": "Usa Genie Code para crear un notebook que funcione como un asistente que responde preguntas sobre los datos en lenguaje natural, usando el Foundation Model API.",
-          "prompt": "Crea un notebook que funcione como un asistente de datos:\n\n1. Primero, genera una función que reciba el nombre de un catálogo y schema, y retorne un string con la descripción de todas las tablas (nombre, columnas, tipos, 3 filas de ejemplo). Usa workshop.gold.\n\n2. Luego, crea una función que llame al Foundation Model API (endpoint 'databricks-claude-sonnet-4') usando httpx:\n   - Recibe un system_prompt y un user_message\n   - Usa Config() del Databricks SDK para obtener host y token\n   - Retorna la respuesta como string\n\n3. Finalmente, crea una función answer_question(question: str) que:\n   - Use el contexto de tablas como system prompt\n   - Pase la pregunta del usuario como user_message\n   - Retorne la respuesta del modelo\n\n4. Pruébalo con: \"¿Cuánto revenue generó Argentina en el último trimestre?\"",
-          "expectedOutput": "Un notebook con 3 funciones y un test. La función answer_question debe retornar una respuesta en español basada en los datos reales del catálogo workshop.",
+          "title": "Construye un Knowledge Assistant sobre cartera",
+          "description": "Crea un asistente que responde preguntas sobre la cartera de créditos en lenguaje natural, usando el Foundation Model API.",
+          "prompt": "Crea un notebook que funcione como un asistente de análisis de cartera de créditos:\n\n1. Genera una función get_schema_context(catalog, schema) que retorne un string con la descripción de todas las tablas disponibles (nombre, columnas, tipos, 3 filas de ejemplo). Usa workshop.gold.\n\n2. Crea una función call_fmapi(system_prompt: str, user_message: str) que llame al Foundation Model API (endpoint 'databricks-claude-sonnet-4') usando httpx:\n   - Usa Config() del Databricks SDK para obtener host y token\n   - Retorna la respuesta como string\n\n3. Crea una función answer_question(question: str) que:\n   - Use el contexto de tablas como system prompt\n   - Pase la pregunta como user_message\n   - Retorne la respuesta del modelo\n\n4. Pruébalo con estas preguntas:\n   - '¿Cuál es la tasa de mora actual en Colombia comparada con el resto de países?'\n   - '¿Qué países tienen mayor concentración de créditos en bucket Mayor_90?'",
+          "expectedOutput": "Un notebook con 3 funciones y 2 llamadas de prueba. Las respuestas deben estar en español, referenciar los datos reales del catálogo workshop, y mencionar cifras concretas de mora por país.",
           "tips": [
             "Si el endpoint FMAPI no responde, verifica el nombre del modelo con el facilitador.",
-            "Este es el patrón base para construir Knowledge Assistants en Databricks."
+            "Este es el patrón base para construir asistentes de datos en Databricks — aplica a cualquier dominio."
           ],
           "warningNote": "Este paso requiere acceso al Foundation Model API. Si no está habilitado, el facilitador te mostrará el resultado esperado."
         },
         {
           "id": "eng-step-7",
           "stepNumber": 7,
-          "title": "Genera documentación automática",
-          "description": "Los datos sin documentación no son útiles. Usa Genie Code para auto-generar un data dictionary de todas las tablas del workshop.",
-          "prompt": "Genera un notebook que auto-documente todas las tablas en workshop.gold:\n\n1. Para cada tabla, genera:\n   - Nombre y descripción (infiere la descripción del contenido)\n   - Lista de columnas con tipo, si es nullable, y una descripción inferida\n   - Row count y fecha del dato más reciente (si tiene columna de fecha)\n   - 3 filas de ejemplo\n\n2. Formatea todo como markdown limpio que pueda copiarse a un wiki o Confluence.\n\n3. Al final, muestra un resumen: tabla, filas, columnas, última actualización.",
-          "expectedOutput": "Un notebook que produce markdown formateado con la documentación completa de las 5 tablas. El resumen final muestra una tabla con metadata de alto nivel.",
+          "title": "Auto-genera documentación técnica",
+          "description": "Los datos bancarios sin documentación crean riesgo regulatorio. Usa Genie Code para auto-generar un Data Dictionary de las tablas del workshop.",
+          "prompt": "Genera un notebook que auto-documente todas las tablas en workshop.gold como un Data Dictionary para el equipo de riesgo y compliance:\n\n1. Para cada tabla genera:\n   - Nombre y descripción de negocio inferida del contenido\n   - Clasificación de sensibilidad: indica si contiene datos PII o financieros sensibles\n   - Tabla de columnas: nombre, tipo, nullable, descripción inferida, ejemplo de valor\n   - Estadísticas: row count, rango de fechas, valores únicos en columnas clave\n   - Relaciones identificadas: foreign keys hacia otras tablas\n\n2. Formatea todo como markdown limpio exportable a Confluence.\n\n3. Genera un índice final:\n| Tabla | Filas | Columnas | Sensibilidad | Descripción |",
+          "expectedOutput": "Un Data Dictionary completo para las 5 tablas. dim_clientes y fact_transacciones deben marcarse como 'Alta sensibilidad — PII'. El índice sirve como tabla de contenidos para Confluence.",
           "tips": [
-            "Este output puedes compartirlo directamente con tu equipo como documentación.",
-            "Adapta el catálogo y schema a tus propias tablas de producción."
+            "Este output se puede copiar directamente a la página de Data Lineage del equipo de Governance.",
+            "Ejecuta este notebook cada trimestre para mantener la documentación actualizada para auditorías externas."
           ],
           "warningNote": null
         },
@@ -105,13 +105,13 @@
           "id": "eng-step-8",
           "stepNumber": 8,
           "title": "Reflexión: ¿dónde aplicas esto mañana?",
-          "description": "Último paso. Piensa en tu trabajo actual y escribe en una celda markdown las respuestas a estas preguntas. Las compartirás con tu grupo en la actividad final.",
+          "description": "Último paso. Piensa en tu trabajo actual y escribe en una celda markdown las respuestas a estas preguntas. Las compartirás con tu grupo.",
           "prompt": null,
           "expectedOutput": null,
           "tips": [
-            "1. ¿Qué pipeline o proceso repetitivo podrías acelerar con Genie Code esta semana?",
-            "2. ¿Qué 'instruction' o 'skill' crearías para estandarizar el output de Genie Code en tu equipo?",
-            "3. Si pudieras automatizar UNA cosa de tu trabajo diario con Genie Code, ¿qué sería?"
+            "1. ¿Qué pipeline de ingesta del core bancario podrías construir más rápido con Genie Code esta semana?",
+            "2. ¿Qué 'skill' de Genie Code crearías para que tu equipo estandarice el logging de pipelines financieros?",
+            "3. Si pudieras automatizar UN proceso batch nocturno con Genie Code, ¿cuál sería?"
           ],
           "warningNote": null
         }
@@ -123,42 +123,42 @@
         },
         {
           "question": "El código generado tiene errores al ejecutar",
-          "answer": "Copia el error completo y pégalo en Genie Code con el mensaje: 'Este código tiene un error: [error]. Corrígelo manteniendo la misma lógica.'"
+          "answer": "Copia el error completo y pégalo en Genie Code: 'Este código tiene un error: [error]. Corrígelo manteniendo la misma lógica.'"
         },
         {
           "question": "No tengo acceso al catálogo workshop",
-          "answer": "Avisa al facilitador (Marco). Necesitas permisos de USE CATALOG y SELECT en workshop.gold."
+          "answer": "Avisa al facilitador. Necesitas permisos de USE CATALOG y SELECT en workshop.gold."
         },
         {
           "question": "El Foundation Model API no responde (Step 6)",
-          "answer": "Verifica que el endpoint se llama 'databricks-claude-sonnet-4'. Si no funciona, el facilitador tiene un notebook de respaldo."
+          "answer": "Verifica que el endpoint se llama 'databricks-claude-sonnet-4'. Si no funciona, el facilitador tiene un notebook de respaldo con el output esperado."
         },
         {
-          "question": "¿Puedo usar estos prompts con mis propias tablas?",
-          "answer": "Sí. Después del workshop, cambia 'workshop.gold' por tu catálogo y schema de producción. Los prompts funcionan igual."
+          "question": "¿Puedo usar estos prompts con mis propias tablas de producción?",
+          "answer": "Sí. Cambia 'workshop.gold' por tu catálogo y schema de producción. Los patrones PySpark y los TBLPROPERTIES funcionan igual."
         }
       ]
     },
     {
       "id": "bi-analytics",
       "title": "BI & Analytics",
-      "subtitle": "De la pregunta al dashboard, en minutos",
-      "description": "Genera SQL desde lenguaje natural, traduce DAX a SQL, construye Metric Views, configura Genie Spaces, y crea dashboards AI/BI — todo con Genie Code.",
+      "subtitle": "Del reporte al insight de cartera en minutos",
+      "description": "Genera SQL desde lenguaje natural, traduce medidas DAX a SQL, construye Metric Views para KPIs bancarios (NPL, mora, captaciones), configura Genie Spaces para analistas de riesgo, y crea dashboards — todo con Genie Code.",
       "icon": "📊",
-      "color": "#DA291C",
+      "color": "#00583C",
       "estimatedMinutes": 105,
-      "participantCount": 13,
+      "participantCount": 0,
       "steps": [
         {
           "id": "bi-step-1",
           "stepNumber": 1,
           "title": "De lenguaje natural a SQL",
-          "description": "Abre un notebook SQL (o Python) y activa Genie Code. Practica generar queries complejas desde preguntas en español.",
-          "prompt": "Escribe una consulta SQL que responda: ¿Cuáles fueron los 10 países con mayor revenue total en los últimos 6 meses?\n\nUsa las tablas workshop.gold.fact_daily_sales y workshop.gold.dim_restaurants.\nIncluye: país, revenue total, cantidad de transacciones, ticket promedio, y el porcentaje que representa cada país del total.\nOrdena por revenue descendente.",
-          "expectedOutput": "Una consulta SQL con JOIN entre fact_daily_sales y dim_restaurants, GROUP BY country_name, con window function para calcular el porcentaje del total. Los primeros resultados deberían ser Brasil y Argentina.",
+          "description": "Abre un notebook y activa Genie Code. Practica generar queries de análisis de cartera desde preguntas en español.",
+          "prompt": "Escribe una consulta SQL que responda: ¿Cuáles son los 10 países con mayor cartera de créditos activa y cuál es su tasa de mora?\n\nUsa las tablas workshop.gold.fact_cartera_creditos y workshop.gold.dim_clientes.\nIncluye: country_code, cartera total vigente (outstanding_balance donde status = 'Vigente'), cartera vencida (days_past_due > 30), tasa de mora (cartera_vencida / cartera_total), número de créditos activos, y el porcentaje que representa cada país de la cartera consolidada.\nOrdena por cartera total descendente.",
+          "expectedOutput": "Una consulta SQL con GROUP BY country_code, window function para porcentaje del total, y filtro de status. Los primeros resultados deberían ser Panamá y Costa Rica (mayor portafolio). La tasa de mora más alta debería estar en Guatemala u Honduras.",
           "tips": [
-            "Mientras más específico seas con las columnas y formato, mejor será el SQL generado.",
-            "Prueba variar la pregunta: agrega filtros, cambia el período, pide otro formato."
+            "Mientras más específico seas sobre las columnas y las condiciones (status='Vigente', DPD>30), mejor será el SQL generado.",
+            "Prueba variar la pregunta: agrega filtros por segmento, cambia el umbral de DPD, pide ranking por tasa de mora en lugar de cartera."
           ],
           "warningNote": null
         },
@@ -166,38 +166,38 @@
           "id": "bi-step-2",
           "stepNumber": 2,
           "title": "Traduce DAX a Databricks SQL",
-          "description": "Si trabajas con Power BI, probablemente escribes DAX. Usa Genie Code para traducir medidas DAX a SQL equivalente.",
-          "prompt": "Traduce la siguiente medida DAX a una consulta Databricks SQL equivalente:\n\n```\nRevenue YoY Growth = \n  VAR CurrentPeriod = \n    CALCULATE(\n      SUM(fact_daily_sales[gross_revenue]),\n      DATESINPERIOD(dim_date[Date], MAX(dim_date[Date]), -12, MONTH)\n    )\n  VAR PriorPeriod = \n    CALCULATE(\n      SUM(fact_daily_sales[gross_revenue]),\n      DATESINPERIOD(dim_date[Date], MAX(dim_date[Date]), -24, MONTH),\n      DATESINPERIOD(dim_date[Date], MAX(dim_date[Date]), -12, MONTH)\n    )\n  RETURN\n    DIVIDE(CurrentPeriod - PriorPeriod, PriorPeriod, 0)\n```\n\nUsa las tablas workshop.gold.fact_daily_sales y workshop.gold.dim_restaurants.\nLa consulta debe calcular el crecimiento YoY de revenue por país.",
-          "expectedOutput": "Una consulta SQL con CTEs o subconsultas que calculen los períodos actual y anterior, y el crecimiento porcentual. Debe usar funciones de fecha de Databricks SQL (DATE_ADD, INTERVAL).",
+          "description": "Si el equipo de BI usa Power BI, probablemente tienen medidas DAX de reporting regulatorio. Usa Genie Code para migrarlas a SQL.",
+          "prompt": "Traduce la siguiente medida DAX de reporting de cartera a Databricks SQL equivalente:\n\n```\nTasa Mora YoY Delta = \n  VAR MoraActual = \n    CALCULATE(\n      DIVIDE(\n        SUMX(FILTER(fact_cartera_creditos, fact_cartera_creditos[days_past_due] > 30), fact_cartera_creditos[outstanding_balance]),\n        SUM(fact_cartera_creditos[outstanding_balance])\n      ),\n      DATESINPERIOD(dim_fecha[Date], MAX(dim_fecha[Date]), -3, MONTH)\n    )\n  VAR MoraAnterior = \n    CALCULATE(\n      DIVIDE(\n        SUMX(FILTER(fact_cartera_creditos, fact_cartera_creditos[days_past_due] > 30), fact_cartera_creditos[outstanding_balance]),\n        SUM(fact_cartera_creditos[outstanding_balance])\n      ),\n      SAMEPERIODLASTYEAR(DATESINPERIOD(dim_fecha[Date], MAX(dim_fecha[Date]), -3, MONTH))\n    )\n  RETURN\n    MoraActual - MoraAnterior\n```\n\nUsa workshop.gold.fact_cartera_creditos. La consulta debe calcular el delta YoY en la tasa de mora (en puntos porcentuales) por país.",
+          "expectedOutput": "Una consulta SQL con CTEs o subconsultas para período actual y anterior, usando DATE_ADD/INTERVAL de Databricks SQL. Calcula la diferencia en puntos porcentuales de la tasa de mora YoY por country_code.",
           "tips": [
-            "Este patrón es clave para la migración de Power BI: toma medidas DAX existentes y conviértelas.",
-            "Genie Code entiende tanto DAX como SQL, así que puedes pegar medidas reales de tu trabajo."
+            "Este patrón es clave para migrar reportes regulatorios de Power BI a Databricks SQL.",
+            "Genie Code entiende DAX y puede traducir medidas complejas — pega medidas reales de tus reportes de supervisión."
           ],
           "warningNote": null
         },
         {
           "id": "bi-step-3",
           "stepNumber": 3,
-          "title": "Crea una Metric View",
-          "description": "Las Metric Views son la nueva forma de definir métricas reutilizables en Unity Catalog. Usa Genie Code para generar la definición YAML.",
-          "prompt": "Genera la definición completa de una Metric View en YAML para la métrica 'Revenue por Transacción' (ticket promedio) con estas características:\n\n- Nombre: avg_ticket_by_market\n- Tabla fuente: workshop.gold.fact_daily_sales\n- Medida: AVG(gross_revenue / transactions) \n- Dimensiones: market (desde dim_restaurants via JOIN), sale_date, daypart_lunch, delivery_pct\n- Filtros disponibles: market, date range\n- Granularidad temporal: diaria y semanal\n\nTambién genera el comando SQL CREATE METRIC VIEW para registrarla en Unity Catalog.",
-          "expectedOutput": "Una definición YAML con la estructura de Metric View (source, measures, dimensions, filters) y el comando CREATE METRIC VIEW correspondiente.",
+          "title": "Crea Metric Views para KPIs bancarios",
+          "description": "Las Metric Views son la nueva capa semántica de Unity Catalog. Define los KPIs de cartera una vez y que cualquier herramienta los consuma.",
+          "prompt": "Genera la definición completa de dos Metric Views en YAML:\n\n**Metric View 1: npl_ratio_by_country**\n- Tabla fuente: workshop.gold.fact_cartera_creditos\n- Medida: SUM(outstanding_balance WHERE days_past_due > 30) / SUM(outstanding_balance) — tasa de mora\n- Dimensiones: country_code, product_type, dpd_bucket, disbursement_date\n- Filtros: country_code, product_type, rango de fechas\n- Granularidad temporal: mensual y trimestral\n\n**Metric View 2: new_disbursements_monthly**\n- Tabla fuente: workshop.gold.fact_kpis_diarios\n- Medida: SUM(new_disbursements)\n- Dimensiones: country_code, kpi_date\n- Filtros: country_code, rango de fechas\n\nTambién genera los comandos SQL CREATE METRIC VIEW para registrarlas en Unity Catalog.",
+          "expectedOutput": "Dos definiciones YAML (npl_ratio_by_country, new_disbursements_monthly) y sus comandos CREATE METRIC VIEW. La medida de NPL usa conditional aggregation (SUM con CASE WHEN).",
           "tips": [
-            "Las Metric Views reemplazan las medidas DAX como capa semántica. Una vez creadas, cualquier herramienta puede consumirlas.",
-            "Puedes crear Metric Views para tus KPIs más usados: revenue, ticket promedio, growth rate."
+            "Las Metric Views reemplazan las medidas DAX como capa semántica. Una vez creadas, Genie Spaces y dashboards las consumen directamente.",
+            "El NPL ratio definido aquí puede ser el mismo que usa el equipo de Riesgo para el reporte a la Superintendencia."
           ],
-          "warningNote": "Metric Views puede requerir un workspace con la feature habilitada. Si no funciona el CREATE, el YAML sigue siendo útil como documentación."
+          "warningNote": "Metric Views puede requerir un workspace con la feature habilitada. Si el CREATE falla, el YAML sigue siendo útil como documentación de la definición oficial del KPI."
         },
         {
           "id": "bi-step-4",
           "stepNumber": 4,
-          "title": "Configura un Genie Space",
-          "description": "Genie Spaces permiten que usuarios no técnicos hagan preguntas sobre datos en lenguaje natural. Usa Genie Code para preparar la configuración.",
-          "prompt": "Genera la configuración completa para un Genie Space de 'Análisis de Ventas por Restaurante' que incluya:\n\n1. **Instrucciones del Space** (system instructions en español):\n   - Contexto: datos de ventas de McDonald's en Latinoamérica\n   - Tablas disponibles y qué contiene cada una\n   - Reglas: siempre responder en español, usar formato de moneda USD, mostrar porcentajes con 1 decimal\n   - Preguntas que NO puede responder (datos de empleados, costos internos)\n\n2. **5 preguntas de ejemplo** (sample questions) que un usuario de negocio haría\n\n3. **Los GRANT statements** necesarios para que un grupo 'workshop_users' pueda usar el space\n\nUsa las tablas workshop.gold.fact_daily_sales, workshop.gold.dim_restaurants, y workshop.gold.fact_daily_kpis.",
-          "expectedOutput": "Un bloque de texto con las instrucciones del Genie Space, 5 preguntas de ejemplo (como '¿Cuál fue el revenue de Argentina la semana pasada?'), y los comandos GRANT sobre las tablas.",
+          "title": "Configura un Genie Space para analistas de riesgo",
+          "description": "Un Genie Space permite que los analistas de riesgo hagan preguntas sobre la cartera en lenguaje natural, sin escribir SQL.",
+          "prompt": "Genera la configuración completa para un Genie Space de 'Análisis de Cartera y Riesgo Crediticio' para el equipo de riesgo de LAFISE:\n\n1. **Instrucciones del Space** (system instructions en español):\n   - Contexto: datos de cartera de créditos de LAFISE en 8 países (NI, CR, HN, PA, DO, SV, GT, CO)\n   - Tablas disponibles y qué contiene cada una\n   - Reglas: responder siempre en español, usar USD, NO responder sobre datos individuales de clientes (privacidad), NO exponer credit_score ni outstanding_balance individuales\n   - Definición de KPIs clave: tasa de mora = créditos con DPD>30 / cartera total\n   - Preguntas que el space NO puede responder: saldos individuales, datos personales de clientes\n\n2. **5 preguntas de ejemplo** relevantes para un analista de riesgo bancario\n\n3. **Los GRANT statements** para el grupo 'risk_analysts' sobre las tablas necesarias",
+          "expectedOutput": "Instrucciones con contexto bancario de LAFISE, restricciones de privacidad explícitas, 5 preguntas de ejemplo (como '¿Cuál es la cartera vencida total en Honduras este trimestre?' o '¿Qué producto tiene mayor tasa de mora en Colombia?'), y los GRANTs sobre fact_cartera_creditos y fact_kpis_diarios.",
           "tips": [
-            "Las instrucciones del Genie Space son como las 'workspace instructions' — moldean cómo responde el asistente.",
-            "Cuanto mejores las instrucciones, mejores las respuestas. Incluye contexto de negocio, no solo datos técnicos."
+            "Las instrucciones del Genie Space son como las 'workspace instructions' — moldean el comportamiento del asistente.",
+            "La restricción de no exponer datos individuales es crucial en banca: protege el secreto bancario y cumple con regulaciones de privacidad."
           ],
           "warningNote": null
         },
@@ -205,38 +205,38 @@
           "id": "bi-step-5",
           "stepNumber": 5,
           "title": "AI Functions en SQL",
-          "description": "Databricks SQL tiene funciones de IA integradas (ai_query, ai_classify, ai_extract) que puedes usar directamente en tus queries.",
-          "prompt": "Genera 3 consultas SQL que usen AI Functions sobre los datos del workshop:\n\n1. **ai_classify**: Clasifica las promociones en fact_promo_events como 'Agresiva', 'Moderada', o 'Conservadora' basándose en discount_type y discount_value.\n\n2. **ai_extract**: A partir de los nombres de las promociones (promo_name), extrae el producto principal mencionado (e.g., 'Big Mac', 'McFlurry', 'Nuggets').\n\n3. **ai_query**: Para cada mercado, genera un resumen ejecutivo de 2 oraciones sobre su rendimiento en el último mes usando los datos de fact_daily_kpis.\n\nUsa el endpoint 'databricks-claude-sonnet-4' donde se requiera especificar modelo.",
-          "expectedOutput": "3 consultas SQL funcionales que usan ai_classify(), ai_extract(), y ai_query() respectivamente. Cada una retorna una tabla con la columna original y la columna generada por IA.",
+          "description": "Databricks SQL tiene funciones de IA integradas (ai_query, ai_classify, ai_extract) que puedes usar directamente en queries de análisis.",
+          "prompt": "Genera 3 consultas SQL que usen AI Functions sobre los datos del workshop:\n\n1. **ai_classify**: Clasifica el riesgo de transacciones en fact_transacciones como 'Alto Riesgo', 'Riesgo Moderado', o 'Normal' basándose en amount, channel, y transaction_type. Usa LIMIT 500 para la demo.\n\n2. **ai_extract**: De los loan_id en fact_cartera_creditos (formato LAFISE-{PAIS}-{TIPO}-{NUM}), extrae el código de país y el tipo de producto como columnas separadas.\n\n3. **ai_query**: Para cada país en fact_kpis_diarios, genera un párrafo ejecutivo de 2 oraciones sobre el estado de su cartera crediticia en el último mes (basándose en npl_ratio, new_disbursements, y yoy_portfolio_growth).\n\nUsa el endpoint 'databricks-claude-sonnet-4' donde se requiera especificar modelo.",
+          "expectedOutput": "3 consultas SQL funcionales con ai_classify(), ai_extract(), y ai_query(). El ai_extract en loan_id produce dos nuevas columnas. El ai_query genera resúmenes ejecutivos en español por país.",
           "tips": [
-            "Las AI Functions consumen tokens del Foundation Model API — no las ejecutes en tablas de millones de filas sin LIMIT.",
-            "Estas funciones se pueden usar dentro de Genie Spaces para enriquecer respuestas automáticamente."
+            "Las AI Functions consumen tokens del Foundation Model API — no las ejecutes sobre tablas completas en producción sin LIMIT.",
+            "ai_extract sobre loan_id es especialmente útil cuando los IDs codifican información de negocio — muy común en banca."
           ],
-          "warningNote": "Las AI Functions requieren un SQL Warehouse con Foundation Model API habilitado. Si no funciona, el facilitador mostrará los resultados."
+          "warningNote": "Las AI Functions requieren un SQL Warehouse con Foundation Model API habilitado. Si no funciona, el facilitador mostrará los resultados esperados."
         },
         {
           "id": "bi-step-6",
           "stepNumber": 6,
-          "title": "Genera un AI/BI Dashboard",
-          "description": "Usa Genie Code para generar las queries y la estructura de un dashboard Lakeview que podrías desplegar con un click.",
-          "prompt": "Genera las consultas SQL para un dashboard de rendimiento de restaurantes con estos 6 paneles:\n\n1. **KPI Cards** (fila superior): Revenue total, Transacciones totales, Ticket promedio, Delivery % — últimos 30 días vs. 30 días anteriores (mostrar delta %)\n\n2. **Line chart**: Revenue semanal por mercado (top 5 mercados), últimos 6 meses\n\n3. **Bar chart**: Top 10 restaurantes por revenue último mes\n\n4. **Pie chart**: Distribución de revenue por daypart (breakfast, lunch, dinner, latenight)\n\n5. **Table**: Resumen por mercado — revenue, transactions, avg ticket, delivery %, YoY growth\n\n6. **Heatmap/Matrix**: Revenue por día de la semana × mercado (para detectar patrones)\n\nPara cada panel, genera la consulta SQL completa usando workshop.gold.* tables.",
-          "expectedOutput": "6 consultas SQL listas para copiar en un dashboard Lakeview. Cada una con alias descriptivos y formato correcto para visualización.",
+          "title": "Genera un dashboard de riesgo crediticio",
+          "description": "Usa Genie Code para generar las queries de un dashboard de riesgo que podrías desplegar en Lakeview con un click.",
+          "prompt": "Genera las consultas SQL para un dashboard de riesgo crediticio con estos 6 paneles:\n\n1. **KPI Cards** (fila superior): Cartera total vigente, Tasa de mora consolidada, Nuevos desembolsos (últimos 30 días), Cobertura de provisiones — con delta vs. período anterior (30 días)\n\n2. **Line chart**: Evolución mensual de tasa de mora por país (top 4 países, últimos 12 meses)\n\n3. **Bar chart**: Top 10 clientes por saldo en bucket Mayor_90 (cartera de alto riesgo)\n\n4. **Pie chart**: Distribución de cartera total por producto (Consumo, Hipoteca, Vehículo, Comercial, Tarjeta)\n\n5. **Table**: Resumen ejecutivo por país — cartera total, cartera vencida (DPD>30), tasa de mora, nuevos desembolsos, cobertura de provisiones\n\n6. **Heatmap**: Tasa de mora por país × segmento de cliente (para identificar concentraciones de riesgo)\n\nUsa workshop.gold.* tables. Incluye los alias descriptivos en cada query.",
+          "expectedOutput": "6 consultas SQL listas para copiar en un dashboard Lakeview. El heatmap usa GROUP BY country_code, segment con la tasa de mora calculada como métrica central.",
           "tips": [
-            "Puedes crear un dashboard Lakeview en Databricks y pegar estas consultas directamente.",
-            "Este patrón acelera la creación de dashboards: describe los paneles, genera SQL, despliega."
+            "Puedes crear el dashboard en Databricks: New → Dashboard Lakeview y pegar estas queries directamente.",
+            "Este dashboard cubre los KPIs del reporte mensual de cartera que pide la Superintendencia en cada país."
           ],
           "warningNote": null
         },
         {
           "id": "bi-step-7",
           "stepNumber": 7,
-          "title": "Genie Supervisor: conecta múltiples espacios",
-          "description": "Un Genie Supervisor puede orquestar múltiples Genie Spaces para responder preguntas que cruzan dominios.",
-          "prompt": "Explica y genera la configuración para un Genie Supervisor que conecte 3 Genie Spaces:\n\n1. Space 'Ventas': tablas fact_daily_sales, dim_restaurants\n2. Space 'Marketing': tablas fact_promo_events, fact_member_activity\n3. Space 'KPIs Ejecutivos': tabla fact_daily_kpis\n\nEl Supervisor debe:\n- Determinar automáticamente qué Space(s) consultar según la pregunta\n- Combinar resultados si la pregunta cruza dominios\n- Responder en español\n\nGenera las instrucciones del Supervisor y un ejemplo de cómo respondería a: '¿Qué promociones impactaron más el revenue de Argentina en el último trimestre?'",
-          "expectedOutput": "Una explicación del patrón Supervisor con las instrucciones de routing, y un ejemplo de cómo el Supervisor delegaría la pregunta al Space de Ventas y al de Marketing para combinar la respuesta.",
+          "title": "Genie Supervisor: conecta múltiples spaces",
+          "description": "Un Genie Supervisor puede orquestar múltiples Genie Spaces para responder preguntas que cruzan dominios (cartera + transacciones + KPIs).",
+          "prompt": "Explica y genera la configuración para un Genie Supervisor que conecte 3 Genie Spaces:\n\n1. Space 'Cartera Créditos': tablas fact_cartera_creditos, dim_clientes\n2. Space 'Transacciones': tablas fact_transacciones, dim_sucursales\n3. Space 'KPIs Ejecutivos': tabla fact_kpis_diarios\n\nEl Supervisor debe:\n- Determinar automáticamente qué Space(s) consultar según la pregunta\n- Combinar resultados si la pregunta cruza dominios\n- Responder en español, sin exponer datos individuales de clientes\n\nGenera las instrucciones del Supervisor y un ejemplo de cómo respondería a: '¿Hay correlación entre el crecimiento de transacciones por App y la reducción de mora en Nicaragua en el último semestre?'",
+          "expectedOutput": "Instrucciones del Supervisor con lógica de routing entre los 3 spaces, y un ejemplo de respuesta que combina datos de Transacciones y KPIs para la pregunta cruzada sobre Nicaragua.",
           "tips": [
-            "El Genie Supervisor es un patrón avanzado — hoy vemos la arquitectura, la implementación puede ser un proyecto de seguimiento.",
-            "Este es el mismo patrón que Joe está implementando con el Genie Supervisor."
+            "El Genie Supervisor es el patrón ideal para analistas que necesitan respuestas que cruzan dominios sin conocer las tablas subyacentes.",
+            "En LAFISE, un Supervisor podría combinar datos de cartera, transacciones, y KPIs regulatorios en una sola pregunta."
           ],
           "warningNote": null
         },
@@ -248,9 +248,9 @@
           "prompt": null,
           "expectedOutput": null,
           "tips": [
-            "1. ¿Qué reporte o dashboard podrías crear más rápido usando Genie Code para generar SQL?",
-            "2. ¿Qué Genie Space sería más valioso para tus usuarios de negocio?",
-            "3. ¿Qué medida DAX o KPI traducirías primero a una Metric View?"
+            "1. ¿Qué reporte regulatorio o de riesgo podrías generar más rápido con Genie Code?",
+            "2. ¿Qué Genie Space sería más valioso para tus analistas de negocio o de riesgo?",
+            "3. ¿Qué KPI bancario traducirías primero a una Metric View oficial en Unity Catalog?"
           ],
           "warningNote": null
         }
@@ -258,15 +258,15 @@
       "faq": [
         {
           "question": "¿Puedo ejecutar SQL directamente en un notebook?",
-          "answer": "Sí. Crea una celda y escribe %sql al inicio, o crea un notebook de tipo SQL directamente."
+          "answer": "Sí. Crea una celda y escribe %sql al inicio, o crea un notebook de tipo SQL directamente desde el workspace."
         },
         {
           "question": "Las AI Functions (ai_query, ai_classify) no funcionan",
-          "answer": "Necesitas un SQL Warehouse con Foundation Model API habilitado. Pregunta al facilitador cuál warehouse usar."
+          "answer": "Necesitas un SQL Warehouse con Foundation Model API habilitado. Pregunta al facilitador cuál warehouse usar para el workshop."
         },
         {
           "question": "¿Cómo creo un Genie Space?",
-          "answer": "Ve a la barra lateral → New → Genie Space. Pega las instrucciones y sample questions del Step 4."
+          "answer": "Ve a la barra lateral → New → Genie Space. Pega las instrucciones y sample questions del Step 4, y agrega las tablas de workshop.gold."
         },
         {
           "question": "El SQL generado tiene errores de sintaxis",
@@ -274,56 +274,56 @@
         },
         {
           "question": "¿Puedo usar estas queries con mis tablas de producción?",
-          "answer": "Sí. Cambia workshop.gold por tu catálogo y schema. Los patrones SQL son los mismos."
+          "answer": "Sí. Cambia workshop.gold por tu catálogo y schema real. Los patrones SQL y las definiciones de KPI son portables."
         }
       ]
     },
     {
       "id": "data-science",
       "title": "Data Science & ML",
-      "subtitle": "Del experimento al modelo en producción",
-      "description": "Usa Genie Code para hacer EDA, feature engineering, entrenar modelos con MLflow, desplegar a Model Serving, y escalar con applyInPandas.",
+      "subtitle": "Del modelo a la decisión crediticia",
+      "description": "Usa Genie Code para hacer EDA de cartera, construir features de scoring crediticio, entrenar con MLflow, desplegar a Model Serving, escalar por país/segmento con applyInPandas, y detectar transacciones sospechosas con FMAPI.",
       "icon": "🧠",
       "color": "#7C3AED",
       "estimatedMinutes": 105,
-      "participantCount": 6,
+      "participantCount": 0,
       "steps": [
         {
           "id": "ds-step-1",
           "stepNumber": 1,
-          "title": "EDA automatizado con Genie Code",
-          "description": "Usa Genie Code para generar un análisis exploratorio completo de los datos de ventas.",
-          "prompt": "Haz un análisis exploratorio completo de workshop.gold.fact_daily_sales:\n\n1. Estadísticas descriptivas de todas las columnas numéricas\n2. Distribución de gross_revenue con histograma (Plotly)\n3. Serie temporal: revenue diario promedio (todos los restaurantes) con línea de tendencia\n4. Heatmap de correlación entre variables numéricas\n5. Boxplot de gross_revenue por día de la semana\n6. Descomposición temporal: tendencia, estacionalidad semanal, y ruido para un restaurante de ejemplo\n\nUsa colores: rojo #DA291C para la serie principal, amarillo #FFC72C para la secundaria, fondo oscuro #27251F.",
-          "expectedOutput": "6 visualizaciones Plotly inline mostrando la distribución, tendencias, correlaciones y patrones estacionales de los datos de ventas.",
+          "title": "EDA automatizado de cartera de créditos",
+          "description": "Usa Genie Code para generar un análisis exploratorio completo de la cartera.",
+          "prompt": "Haz un análisis exploratorio completo de workshop.gold.fact_cartera_creditos:\n\n1. Estadísticas descriptivas de todas las columnas numéricas\n2. Distribución de outstanding_balance con histograma (Plotly)\n3. Gráfico de barras: distribución de créditos por dpd_bucket (Al_Dia, 1-30, 31-60, 61-90, Mayor_90)\n4. Heatmap de correlación entre variables numéricas\n5. Boxplot de outstanding_balance por product_type\n6. Serie temporal: volumen de nuevos créditos desembolsados por mes y país\n\nUsa colores: verde oscuro #00583C para la serie principal, verde medio #018765 para la secundaria, fondo oscuro para los charts donde aplique.",
+          "expectedOutput": "6 visualizaciones Plotly inline. La distribución de DPD bucket muestra ~75% Al_Dia, ~12% en 1-30, y el resto distribuido en mora. La correlación muestra relación entre original_amount y outstanding_balance.",
           "tips": [
-            "Este notebook de EDA es reutilizable — cámbialo a cualquier tabla y obtienes un perfil completo.",
-            "La descomposición temporal es clave para el forecasting que haremos después."
+            "Este notebook de EDA es reutilizable — cámbialo a cualquier tabla de cartera de producción.",
+            "La distribución por DPD bucket es el primer diagnóstico de salud de la cartera — compárala contra los benchmarks del sector."
           ],
           "warningNote": null
         },
         {
           "id": "ds-step-2",
           "stepNumber": 2,
-          "title": "Feature engineering para forecasting",
-          "description": "Genera un pipeline de features temporales para predecir revenue diario.",
-          "prompt": "Crea un pipeline de feature engineering en PySpark para predecir gross_revenue diario por restaurante:\n\n1. Filtra los datos del restaurante 'REST-AR-0001' para tener un ejemplo limpio\n2. Genera estas features:\n   - day_of_week (0-6)\n   - month (1-12)\n   - is_weekend (boolean)\n   - week_of_year\n   - lag_7d (revenue hace 7 días)\n   - lag_14d (revenue hace 14 días)\n   - rolling_mean_7d (promedio móvil 7 días)\n   - rolling_mean_28d (promedio móvil 28 días)\n   - days_since_start (feature de tendencia lineal)\n3. Elimina filas con NULLs generados por los lags\n4. Divide en train (todo excepto últimos 30 días) y test (últimos 30 días)\n5. Muestra las dimensiones de train y test, y un sample de las features",
-          "expectedOutput": "Un notebook con window functions de PySpark para generar lags y rolling means, split temporal, y display de las shapes (train: ~700 filas, test: 30 filas).",
+          "title": "Feature engineering para scoring crediticio",
+          "description": "Genera el pipeline de features para predecir si un crédito entrará en mora en los próximos 30 días.",
+          "prompt": "Crea un pipeline de feature engineering en PySpark para predecir si un crédito entrará en mora (days_past_due > 30) en los próximos 30 días:\n\n1. Lee workshop.gold.fact_cartera_creditos y filtra status = 'Vigente'\n2. Genera estas features:\n   - loan_age_days: días transcurridos desde disbursement_date hasta hoy\n   - months_to_maturity: meses restantes hasta maturity_date\n   - balance_ratio: outstanding_balance / original_amount (qué tan pagado está)\n   - payment_burden: monthly_payment / outstanding_balance (carga mensual relativa)\n   - is_high_risk_country: 1 si country_code en ('HN', 'GT', 'DO', 'SV'), 0 si no\n   - country_avg_npl: promedio de days_past_due de todos los créditos del mismo país\n   - product_default_rate: tasa de mora histórica del mismo product_type\n3. Target variable: label = 1 si days_past_due > 30, 0 si no\n4. Split temporal: train = créditos desembolsados antes de 2025-07-01, test = desde 2025-07-01\n5. Muestra la distribución del target (balance de clases — crítico en scoring crediticio)",
+          "expectedOutput": "Pipeline con window functions de PySpark para country_avg_npl y product_default_rate. La distribución del target muestra aproximadamente 15-22% de créditos en mora (desbalance de clases — habrá que manejarlo en el entrenamiento).",
           "tips": [
-            "Los lags y rolling means son las features más poderosas para series temporales — más que la estacionalidad.",
-            "El split temporal (no random) es crucial: nunca mezcles futuro con pasado en time series."
+            "El split temporal (no aleatorio) es OBLIGATORIO en scoring crediticio — nunca uses datos futuros para entrenar.",
+            "El desbalance de clases (~80/20) es normal en banca — lo manejaremos con scale_pos_weight en XGBoost."
           ],
           "warningNote": null
         },
         {
           "id": "ds-step-3",
           "stepNumber": 3,
-          "title": "Entrena y registra con MLflow",
-          "description": "Entrena un modelo XGBoost y regístralo en MLflow con todos los artefactos.",
-          "prompt": "Entrena un XGBRegressor para predecir gross_revenue usando las features del Step 2:\n\n1. Configura el MLflow experiment: '/workshop/demand-forecasting'\n2. Dentro de un mlflow.start_run():\n   - Log params: n_estimators=200, max_depth=6, learning_rate=0.05\n   - Fit el modelo en train\n   - Evalúa en test: calcula RMSE, MAE, MAPE, R²\n   - Log todas las métricas\n   - Log el modelo con mlflow.sklearn.log_model (artifact_path='model')\n   - Set tags: layer='gold', team='data-science'\n3. Registra el modelo en Unity Catalog: workshop.gold.demand_forecast_model\n4. Muestra métricas y 2 charts:\n   - Predicted vs Actual (scatter con diagonal)\n   - Feature importances (horizontal bar, top 10)\n\nUsa colores McDonald's para los charts.",
-          "expectedOutput": "Un MLflow run con params, metrics, model artifact, y tags. Dos charts Plotly mostrando la calidad del modelo. R² esperado: ~0.85-0.95.",
+          "title": "Entrena y registra el modelo con MLflow",
+          "description": "Entrena un clasificador de riesgo crediticio y regístralo en MLflow con artefactos para auditoría regulatoria.",
+          "prompt": "Entrena un XGBClassifier para predecir mora crediticia y regístralo en MLflow:\n\n1. Configura el experiment: '/workshop/credit-scoring-lafise'\n2. Calcula scale_pos_weight = n_negativos / n_positivos para manejar el desbalance\n3. Dentro de un mlflow.start_run():\n   - Log params: n_estimators=200, max_depth=5, learning_rate=0.05, scale_pos_weight calculado\n   - Fit el modelo en train\n   - Evalúa en test: AUC-ROC, Gini (2*AUC-1), KS Statistic, Precision, Recall, F1\n   - Log todas las métricas\n   - Log el modelo con mlflow.sklearn.log_model\n   - Log la curva ROC como artefacto PNG\n   - Set tags: domain='credit-risk', country='CONSOLIDADO', regulation='supervisory'\n4. Registra el modelo en Unity Catalog: workshop.gold.credit_scoring_lafise\n5. Muestra la curva ROC y las top 10 feature importances\n\nColorea la curva ROC con #00583C (verde LAFISE).",
+          "expectedOutput": "MLflow run con AUC-ROC esperado >0.75 y Gini >0.50. La curva ROC se logea como artefacto PNG. Feature importances muestran balance_ratio y loan_age_days como las más importantes.",
           "tips": [
-            "El patrón mlflow.start_run() → log_params → log_metrics → log_model es el estándar para TODO modelo en Databricks.",
-            "Registrar en Unity Catalog permite versionar y gobernar modelos como cualquier otro dato."
+            "El patrón mlflow.start_run() → log_params → log_metrics → log_model es el estándar para modelos en producción.",
+            "El tag 'regulation' = 'supervisory' señala que este modelo requiere documentación para posible revisión de la Superintendencia."
           ],
           "warningNote": null
         },
@@ -331,12 +331,12 @@
           "id": "ds-step-4",
           "stepNumber": 4,
           "title": "Evalúa y compara modelos",
-          "description": "Usa Genie Code para generar un notebook de evaluación completo que compare diferentes configuraciones.",
-          "prompt": "Genera un notebook que compare 3 variantes del modelo de forecasting:\n\n1. Modelo A: XGBRegressor(n_estimators=100, max_depth=4) — simple\n2. Modelo B: XGBRegressor(n_estimators=200, max_depth=6) — el que ya entrenamos\n3. Modelo C: XGBRegressor(n_estimators=500, max_depth=8, min_child_weight=5) — complejo\n\nPara cada uno:\n- Entrena y evalúa en el mismo train/test split\n- Log a MLflow en el mismo experiment\n\nAl final muestra:\n- Tabla comparativa: modelo, RMSE, MAE, MAPE, R², training time\n- Chart: predicciones de los 3 modelos superpuestas sobre el test set real\n- Análisis de residuos: histograma de errores por modelo",
-          "expectedOutput": "3 MLflow runs comparables. Una tabla con métricas, un chart de predicciones superpuestas, y histogramas de residuos. El modelo B o C debería ganar.",
+          "description": "En scoring crediticio, la elección del modelo tiene implicaciones regulatorias. Compara tres variantes y analiza el trade-off entre performance y complejidad.",
+          "prompt": "Genera un notebook que compare 3 variantes del modelo de scoring crediticio:\n\n1. Modelo A: XGBClassifier(n_estimators=100, max_depth=3) — simple, fácil de explicar\n2. Modelo B: XGBClassifier(n_estimators=200, max_depth=5) — estándar\n3. Modelo C: XGBClassifier(n_estimators=500, max_depth=7, subsample=0.8) — complejo\n\nPara cada modelo:\n- Entrena y evalúa con el mismo split temporal\n- Calcula: AUC-ROC, Gini, KS Statistic, Precision@top10pct (de los créditos con mayor score, ¿qué % realmente entra en mora?)\n- Log a MLflow en el mismo experiment\n\nTabla comparativa: modelo, AUC, Gini, KS, Precision@top10, overfitting_gap (AUC_train - AUC_test)\n\nAl final, incluye una discusión: ¿cuál elegirías para producción considerando que la Superintendencia puede pedir explicar las decisiones del modelo?",
+          "expectedOutput": "3 MLflow runs con métricas bancarias (Gini y KS además de AUC). La tabla comparativa muestra el overfitting gap del modelo C. La discusión menciona el trade-off entre performance y explicabilidad regulatoria.",
           "tips": [
-            "En MLflow Experiments UI puedes ver los 3 runs lado a lado — abre el experiment después de ejecutar.",
-            "El análisis de residuos revela si el modelo tiene sesgo sistemático (e.g., subestima picos)."
+            "En contexto regulatorio (SUGEF, Superintendencia Financiera), los modelos más simples pueden ser preferibles si el regulador pide explicar decisiones.",
+            "El KS Statistic es el métrico estándar en scoring crediticio bancario — debe ser >0.30 para considerar el modelo útil."
           ],
           "warningNote": null
         },
@@ -344,40 +344,40 @@
           "id": "ds-step-5",
           "stepNumber": 5,
           "title": "Despliega a Model Serving",
-          "description": "Toma el mejor modelo y despliégalo como un endpoint REST.",
-          "prompt": "Genera el código para desplegar el mejor modelo del experiment '/workshop/demand-forecasting' como un Model Serving endpoint:\n\n1. Busca el run con menor RMSE en el experiment\n2. Promueve ese modelo a 'Champion' en el Model Registry\n3. Crea un serving endpoint usando el Databricks SDK:\n   - Nombre: workshop-demand-forecast\n   - Tipo: serverless\n   - Model: la versión Champion de workshop.gold.demand_forecast_model\n4. Genera un request de prueba con datos realistas:\n   - day_of_week=5 (sábado), month=4, is_weekend=true, etc.\n5. Muestra cómo hacer la llamada REST al endpoint\n\nUsa WorkspaceClient() del databricks-sdk.",
-          "expectedOutput": "Código que busca el mejor run, registra como Champion, crea el endpoint, y muestra el curl/Python para probarlo. El endpoint tardará 2-5 minutos en estar Ready.",
+          "description": "Toma el mejor modelo y despliégalo como un endpoint REST que el sistema de originación pueda llamar en tiempo real.",
+          "prompt": "Genera el código para desplegar el mejor modelo de scoring a un endpoint de Model Serving:\n\n1. Busca el run con mayor AUC-ROC en el experiment '/workshop/credit-scoring-lafise'\n2. Promueve ese modelo como 'Champion' en el Model Registry\n3. Crea el serving endpoint con Databricks SDK:\n   - Nombre: workshop-credit-score-lafise\n   - Tipo: serverless\n4. Genera un request de prueba con un cliente representativo (incluye todas las features del Step 2)\n5. Muestra cómo llamar el endpoint desde Python\n6. Genera una Model Card básica en markdown con: propósito, variables de entrada, métricas de desempeño, limitaciones, fecha de entrenamiento, y campo 'Regulatory Review' para documentar la revisión regulatoria",
+          "expectedOutput": "Código de deployment con WorkspaceClient(), request de prueba con features bancarias, y una Model Card en markdown con sección 'Regulatory Review' — requerimiento habitual cuando el modelo afecta decisiones crediticias.",
           "tips": [
-            "El endpoint puede tardar unos minutos en iniciar — no te preocupes si no está Ready inmediatamente.",
-            "Una vez Ready, cualquier aplicación puede llamar a este endpoint para obtener predicciones."
+            "El endpoint puede tardar 3-5 minutos en iniciar en cold start — es normal.",
+            "La Model Card es documentación obligatoria en muchos marcos regulatorios si el modelo afecta acceso al crédito."
           ],
           "warningNote": "Model Serving serverless puede tardar 5-10 minutos en cold-start. El facilitador tiene un endpoint pre-calentado como respaldo."
         },
         {
           "id": "ds-step-6",
           "stepNumber": 6,
-          "title": "Escala con applyInPandas",
-          "description": "Entrena un modelo POR restaurante en paralelo usando grouped map UDFs.",
-          "prompt": "Genera un notebook que entrene un modelo XGBoost POR RESTAURANTE usando applyInPandas:\n\n1. Lee workshop.gold.fact_daily_sales y genera las features del Step 2 para TODOS los restaurantes\n2. Define una función train_restaurant_model(pdf: pd.DataFrame) que:\n   - Recibe un pandas DataFrame (datos de UN restaurante)\n   - Genera features, split temporal, entrena XGBoost\n   - Log a MLflow con tag restaurant_id\n   - Retorna un DataFrame con: restaurant_id, rmse, mae, r2, run_id\n3. Aplica con: df.groupBy('restaurant_id').applyInPandas(train_restaurant_model, schema=result_schema)\n4. Limita a los 20 restaurantes con más datos (para velocidad en el workshop)\n5. Muestra la tabla de resultados y un chart de R² por restaurante\n\nUsa el schema: restaurant_id STRING, rmse DOUBLE, mae DOUBLE, r2 DOUBLE, run_id STRING",
-          "expectedOutput": "Un notebook que entrena 20 modelos en paralelo (~2-3 minutos). La tabla muestra métricas por restaurante. El chart de R² muestra qué restaurantes son más predecibles.",
+          "title": "Escala con applyInPandas: un modelo por país y segmento",
+          "description": "LAFISE opera en 8 países con carteras muy diferentes. Entrena un modelo específico por país × segmento en paralelo.",
+          "prompt": "Genera un notebook que entrene un modelo de scoring POR PAÍS Y SEGMENTO usando applyInPandas:\n\n1. Lee workshop.gold.fact_cartera_creditos + workshop.gold.dim_clientes y genera las features del Step 2 para TODOS los créditos\n2. Define una función train_scoring_model(pdf: pd.DataFrame) que:\n   - Recibe datos de UN grupo (country_code + segment)\n   - Genera features, split temporal, entrena XGBoost con scale_pos_weight\n   - Log a MLflow con tags country y segment\n   - Retorna DataFrame con: country_code, segment, auc_roc, gini, ks, n_loans, n_defaults, run_id\n3. Aplica con: df.groupBy('country_code', 'segment').applyInPandas(train_scoring_model, schema=result_schema)\n4. Filtra grupos con al menos 30 créditos (mínimo estadístico)\n5. Muestra tabla de resultados y heatmap de AUC por país × segmento",
+          "expectedOutput": "Notebook que entrena múltiples modelos en paralelo. La tabla muestra métricas por país/segmento. El heatmap revela qué combinaciones son más predecibles — esperar que Corporativo tenga AUC más alto que Retail.",
           "tips": [
-            "applyInPandas distribuye el entrenamiento en paralelo — 20 modelos toman casi lo mismo que 1.",
-            "Este es el patrón para forecasting a escala: un modelo por tienda/producto/región."
+            "applyInPandas distribuye el entrenamiento — 20 modelos toman casi lo mismo que 1.",
+            "Este patrón permite que cada país/segmento tenga su modelo calibrado a su propia dinámica de mora."
           ],
           "warningNote": null
         },
         {
           "id": "ds-step-7",
           "stepNumber": 7,
-          "title": "Scaffold de Computer Vision con FMAPI",
-          "description": "Usa Genie Code para generar el esqueleto de un pipeline de clasificación de imágenes.",
-          "prompt": "Genera un notebook que demuestre cómo usar el Foundation Model API para clasificación de imágenes:\n\n1. Muestra cómo leer una imagen desde Unity Catalog Volumes (/Volumes/workshop/images/sample.jpg)\n2. Genera una función classify_image(image_path: str) que:\n   - Lee la imagen y la convierte a base64\n   - Llama al FMAPI con un prompt de clasificación ('Clasifica esta imagen de restaurante en: limpio, necesita limpieza, mantenimiento requerido')\n   - Retorna la clasificación y la confianza\n3. Genera una función batch_classify(image_paths: list) que procese múltiples imágenes\n4. Muestra cómo guardar los resultados en una tabla Delta\n\nEste es un scaffold — no necesitas imágenes reales, genera el código completo con placeholders.",
-          "expectedOutput": "Un notebook con funciones de clasificación de imágenes vía FMAPI, incluyendo encoding base64, llamada HTTP, y almacenamiento de resultados. El código está listo para adaptar con imágenes reales.",
+          "title": "Detección de transacciones sospechosas con FMAPI",
+          "description": "Usa Genie Code para generar un notebook de detección de transacciones anómalas — el primer paso de un pipeline SARLAFT/SAGRILAFT.",
+          "prompt": "Genera un notebook de detección de transacciones sospechosas usando el Foundation Model API:\n\n1. Crea una función analyze_customer_transactions(customer_id: str) que:\n   - Lea las transacciones del cliente desde fact_transacciones\n   - Llame al FMAPI con un prompt que evalúe si alguna transacción parece sospechosa (patrones: monto inusual para el cliente, cambio repentino de canal, horario atípico)\n   - Clasifique cada transacción como 'Normal', 'Sospechosa', o 'Potencial Fraude'\n   - Retorne el resultado con justificación\n\n2. Aplica sobre una muestra de 50 clientes\n\n3. Genera un reporte: customer_id, n_transacciones_revisadas, n_sospechosas, n_fraude_potencial, detalle\n\n4. Guarda el reporte en workshop.gold.alertas_sarlaft_review\n\nNota: en producción, este output alimentaría el sistema de gestión de alertas SARLAFT.",
+          "expectedOutput": "Notebook que procesa transacciones por cliente vía FMAPI y genera un reporte de alertas. Transacciones con amount > 3σ del cliente o cambio repentino de canal serán marcadas como sospechosas.",
           "tips": [
-            "Este patrón aplica a: moderación de imágenes (Leandro), inspección visual de restaurantes (Martin), análisis de packaging.",
-            "El FMAPI soporta modelos multimodales — puedes enviar imágenes directamente."
+            "SARLAFT (Colombia) y SIAF (Centroamérica) requieren sistemas de monitoreo de transacciones — este es el prototipo.",
+            "En producción, combinarías reglas determinísticas (umbrales) con el análisis semántico del FMAPI para reducir falsos positivos."
           ],
-          "warningNote": "Este step genera código scaffold — no necesitas imágenes reales para completarlo."
+          "warningNote": "Este step genera alertas ficticias — los datos son sintéticos. No interpretes los resultados como reales."
         },
         {
           "id": "ds-step-8",
@@ -387,21 +387,21 @@
           "prompt": null,
           "expectedOutput": null,
           "tips": [
-            "1. ¿Qué modelo en tu backlog podrías prototipar más rápido con Genie Code?",
-            "2. ¿Qué parte del flujo ML (EDA, features, training, serving) te consume más tiempo hoy?",
-            "3. ¿Qué 'skill' de Genie Code crearías para que tu equipo siga el estándar de MLflow logging?"
+            "1. ¿Qué modelo en tu backlog (scoring, fraude, churn) podrías prototipar más rápido con Genie Code?",
+            "2. ¿Cómo integrarías el scoring model con el sistema de originación de crédito actual?",
+            "3. ¿Qué 'skill' de Genie Code crearías para que tu equipo estandarice la Model Card y la documentación regulatoria?"
           ],
           "warningNote": null
         }
       ],
       "faq": [
         {
-          "question": "El modelo tiene un R² muy bajo",
-          "answer": "Verifica que el split temporal es correcto (últimos 30 días como test, no random). Si el R² < 0.5, puede haber un bug en las features — revisa que los lags se calcularon correctamente."
+          "question": "El AUC-ROC del modelo es bajo (<0.65)",
+          "answer": "Verifica que el split es temporal (no aleatorio) y que las features de lag/window se calcularon correctamente. Un AUC bajo también puede indicar que los datos sintéticos del workshop no tienen suficiente señal — en producción con datos reales los resultados mejoran."
         },
         {
           "question": "MLflow no encuentra el experiment",
-          "answer": "El experiment se crea automáticamente con mlflow.set_experiment(). Verifica que el path comience con '/workshop/'."
+          "answer": "El experiment se crea automáticamente con mlflow.set_experiment(). Verifica que el path comienza con '/workshop/'."
         },
         {
           "question": "Model Serving tarda mucho en iniciar",
@@ -409,112 +409,112 @@
         },
         {
           "question": "applyInPandas falla con error de schema",
-          "answer": "El schema del resultado debe coincidir exactamente con lo que retorna la función. Verifica que retornas un DataFrame con las columnas correctas."
+          "answer": "El schema del resultado debe coincidir exactamente con lo que retorna la función. Verifica que retornas un DataFrame con las columnas: country_code, segment, auc_roc, gini, ks, n_loans, n_defaults, run_id."
         },
         {
-          "question": "¿Puedo usar esto con mis datos de producción?",
-          "answer": "Sí. Cambia la tabla fuente y ajusta las features a tu dominio. El patrón MLflow + applyInPandas es el mismo."
+          "question": "¿Qué es el KS Statistic y cómo se interpreta?",
+          "answer": "El KS (Kolmogorov-Smirnov) mide la separación máxima entre la distribución de scores de buenos y malos pagadores. Un KS >0.30 es aceptable, >0.40 es bueno en scoring bancario."
         }
       ]
     },
     {
       "id": "data-governance",
       "title": "Data Governance",
-      "subtitle": "Automatiza calidad y escala Data Academy",
-      "description": "Genera checks de data quality desde lenguaje natural, crea frameworks de DQ reutilizables, scaffold políticas CLS/RLS, y produce materiales de Data Academy — todo con Genie Code.",
+      "subtitle": "Calidad, seguridad y cumplimiento regulatorio",
+      "description": "Genera checks de calidad para reportes regulatorios, crea frameworks DQ reutilizables con impacto regulatorio, implementa políticas CLS/RLS para datos financieros sensibles (SARLAFT, Superintendencia), y produce materiales de Data Academy — todo con Genie Code.",
       "icon": "🛡️",
       "color": "#0891B2",
       "estimatedMinutes": 105,
-      "participantCount": 3,
+      "participantCount": 0,
       "steps": [
         {
           "id": "gov-step-1",
           "stepNumber": 1,
-          "title": "Genera checks de calidad desde lenguaje natural",
-          "description": "Describe reglas de calidad en español y deja que Genie Code genere el código PySpark.",
-          "prompt": "Genera funciones PySpark de data quality para las siguientes reglas:\n\n1. **check_nulls(df, columns: list)** → Para cada columna, cuenta los NULLs y retorna un dict con {columna: null_count}\n2. **check_duplicates(df, key_columns: list)** → Cuenta filas duplicadas en las columnas clave\n3. **check_referential_integrity(df, fk_col, ref_df, pk_col)** → Cuenta filas donde el FK no existe en la tabla de referencia\n4. **check_value_range(df, col, min_val, max_val)** → Cuenta valores fuera del rango\n5. **check_freshness(df, date_col, max_age_days: int)** → Verifica si el dato más reciente tiene menos de max_age_days días\n\nCada función debe retornar un diccionario con: check_name, table_name, status ('PASS'/'FAIL'/'WARN'), metric (el número), detail (descripción).\n\nPrueba cada función contra workshop.gold.dim_restaurants.",
-          "expectedOutput": "5 funciones PySpark reutilizables. Al probarlas contra dim_restaurants, deberían detectar: 15 nulls en market, 5 duplicados en restaurant_id, y 12 coordenadas fuera de rango.",
+          "title": "Genera checks de calidad para datos regulatorios",
+          "description": "Los datos bancarios tienen reglas de calidad específicas que impactan el cumplimiento regulatorio. Usa Genie Code para generar las funciones de validación.",
+          "prompt": "Genera funciones PySpark de data quality para validaciones bancarias:\n\n1. **check_nulls(df, columns: list)** → Para cada columna, cuenta los NULLs y su porcentaje sobre el total\n2. **check_duplicates(df, key_columns: list)** → Cuenta filas duplicadas en la clave indicada\n3. **check_referential_integrity(df, fk_col, ref_df, pk_col)** → Cuenta FKs sin match en la tabla de referencia\n4. **check_value_range(df, col, min_val, max_val)** → Cuenta valores fuera del rango permitido\n5. **check_dpd_consistency(df)** → Valida que el dpd_bucket en fact_cartera_creditos es consistente con days_past_due:\n   - Al_Dia: days_past_due = 0\n   - 1-30: 1 <= days_past_due <= 30\n   - 31-60: 31 <= days_past_due <= 60\n   - 61-90: 61 <= days_past_due <= 90\n   - Mayor_90: days_past_due > 90\n\nCada función retorna: check_name, table_name, status ('PASS'/'FAIL'/'WARN'), metric, detail, regulatory_impact ('None'/'Low'/'High').\n\nPrueba cada función contra workshop.gold.fact_cartera_creditos.",
+          "expectedOutput": "5 funciones PySpark con el campo regulatory_impact. Al probarlas, detectan: ~5 NULL interest_rate, ~8 DPD negativos, ~12 dpd_bucket inconsistentes, ~4 fechas de madurez anteriores al desembolso — defectos que impactarían el reporte regulatorio de cartera.",
           "tips": [
-            "Estas funciones son el building block para toda automatización de DQ.",
-            "El formato de retorno estandarizado (check_name, status, metric) permite agregar resultados de múltiples checks."
+            "El check_dpd_consistency es específico de banca — una inconsistencia entre DPD y bucket hace que el reporte de mora a la Superintendencia sea incorrecto.",
+            "El regulatory_impact='High' en un FAIL debería disparar una alerta al equipo de compliance."
           ],
           "warningNote": null
         },
         {
           "id": "gov-step-2",
           "stepNumber": 2,
-          "title": "Profiling automatizado de todas las tablas",
-          "description": "Ejecuta un profiling completo que descubra problemas de calidad en todas las tablas del workshop.",
-          "prompt": "Crea un notebook que haga profiling automático de TODAS las tablas en workshop.gold:\n\nPara cada tabla muestra:\n1. Row count\n2. Conteo de NULLs por columna (como tabla)\n3. Conteo de duplicados en la primary key (inferir la PK por nombre: *_id)\n4. Para columnas numéricas: min, max, mean, stddev, y valores sospechosos (negativos donde no debería, >100% donde es porcentaje)\n5. Para columnas string: valores únicos, top 5 más frecuentes, y valores inconsistentes (misma palabra con diferente capitalización)\n6. Para columnas date: rango, gaps, y fechas futuras\n\nGenera un resumen final tipo scorecard: tabla, total_checks, passed, failed, score (%).",
-          "expectedOutput": "Un profiling detallado que descubre los ~350 defectos plantados: nulls, duplicados, valores negativos, capitalización inconsistente, fechas futuras, etc. El scorecard muestra que ninguna tabla está al 100%.",
+          "title": "Profiling automatizado de tablas financieras",
+          "description": "Ejecuta un profiling completo que descubra todos los problemas de calidad inyectados en las tablas del workshop.",
+          "prompt": "Crea un notebook de profiling automático de TODAS las tablas en workshop.gold, orientado a auditoría bancaria:\n\nPara cada tabla muestra:\n1. Row count y estimación de tamaño\n2. Columnas con NULLs (conteo y % — umbral WARN si >1%, FAIL si >5%)\n3. Duplicados en la primary key inferida (columna que termina en _id)\n4. Para columnas numéricas: min, max, mean, stddev, outliers (>3σ)\n5. Para columnas de fecha: rango, fechas futuras, fechas imposibles (antes de 1990 para créditos)\n6. Para columnas categóricas: valores únicos, top 5, inconsistencias de capitalización\n7. **Clasificación PII**: marca las columnas que contienen datos personales o financieros sensibles\n\nScorecard final:\n| Tabla | Checks | Passed | Failed | Score DQ (%) | Nivel Sensibilidad |",
+          "expectedOutput": "Profiling que detecta los ~382 defectos inyectados. El scorecard incluye 'Nivel Sensibilidad' marcando dim_clientes como 'PII-Alto' y fact_transacciones como 'Financiero-Alto'. Ninguna tabla debería llegar al 100% de Score DQ.",
           "tips": [
-            "Este notebook es el primer paso de cualquier auditoría de datos — úsalo en tablas de producción.",
-            "Los defectos que encontraste son representativos de problemas reales en cualquier data lake."
+            "Este notebook es el primer paso de cualquier auditoría de datos — úsalo antes de un reporte regulatorio.",
+            "Los defectos encontrados son representativos de problemas reales en datos de core bancario — NULLs, duplicados, inconsistencias de capitalización."
           ],
           "warningNote": null
         },
         {
           "id": "gov-step-3",
           "stepNumber": 3,
-          "title": "Framework de DQ configurable",
-          "description": "Crea un framework reutilizable donde las reglas se definen en un diccionario y un runner las ejecuta todas.",
-          "prompt": "Crea un framework de data quality con dos partes:\n\n1. **Configuración de reglas** (diccionario Python):\n```python\ndq_rules = {\n    'dim_restaurants': [\n        {'check': 'nulls', 'columns': ['market', 'city', 'restaurant_type']},\n        {'check': 'duplicates', 'key_columns': ['restaurant_id']},\n        {'check': 'value_range', 'col': 'latitude', 'min': -60, 'max': 15},\n        {'check': 'value_range', 'col': 'seating_capacity', 'min': 1, 'max': 500},\n        {'check': 'freshness', 'date_col': 'opening_date', 'max_age_days': 36500},\n    ],\n    'fact_daily_sales': [\n        {'check': 'nulls', 'columns': ['sale_date', 'restaurant_id']},\n        {'check': 'value_range', 'col': 'avg_ticket', 'min': 0, 'max': 100},\n        {'check': 'value_range', 'col': 'gross_revenue', 'min': 0, 'max': 50000},\n        {'check': 'referential_integrity', 'fk_col': 'restaurant_id', 'ref_table': 'dim_restaurants', 'pk_col': 'restaurant_id'},\n    ],\n    # ... más tablas\n}\n```\n\n2. **Runner** — función run_all_checks(dq_rules, catalog, schema) que:\n   - Ejecuta todas las reglas\n   - Retorna un DataFrame Spark con: run_id (UUID), run_timestamp, table_name, check_name, status, metric, detail\n\nIncluye reglas para las 5 tablas (mínimo 3 por tabla = 15+ reglas).\nEjecuta y muestra los resultados.",
-          "expectedOutput": "Un diccionario con 15+ reglas, una función runner que produce un DataFrame con todos los resultados. Al ejecutar, se detectan múltiples FAIL y WARN.",
+          "title": "Framework DQ configurable con impacto regulatorio",
+          "description": "Crea un framework donde las reglas se definen en un diccionario y un runner las ejecuta todas, tagging el impacto regulatorio de cada falla.",
+          "prompt": "Crea un framework de data quality para reportes regulatorios bancarios:\n\n1. **Configuración de reglas** (diccionario Python):\n```python\ndq_rules = {\n    'dim_clientes': [\n        {'check': 'nulls', 'columns': ['country_code', 'segment', 'risk_profile'], 'regulatory_impact': 'High'},\n        {'check': 'duplicates', 'key_columns': ['customer_id'], 'regulatory_impact': 'High'},\n        {'check': 'value_range', 'col': 'credit_score', 'min': 300, 'max': 850, 'regulatory_impact': 'Low'},\n    ],\n    'fact_cartera_creditos': [\n        {'check': 'nulls', 'columns': ['loan_id', 'customer_id', 'disbursement_date', 'interest_rate'], 'regulatory_impact': 'High'},\n        {'check': 'value_range', 'col': 'days_past_due', 'min': 0, 'max': 3650, 'regulatory_impact': 'High'},\n        {'check': 'referential_integrity', 'fk_col': 'customer_id', 'ref_table': 'dim_clientes', 'pk_col': 'customer_id', 'regulatory_impact': 'High'},\n        {'check': 'dpd_consistency', 'regulatory_impact': 'High'},\n    ],\n    # ... + reglas para las 3 tablas restantes\n}\n```\n\n2. **Runner** — función run_all_checks(dq_rules, catalog, schema) que retorne DataFrame Spark con: run_id (UUID), run_timestamp, table_name, check_name, status, metric, detail, regulatory_impact\n\nIncluye reglas para las 5 tablas (mínimo 3 por tabla = 15+ reglas totales).\nEjecuta y muestra los resultados con display().",
+          "expectedOutput": "Diccionario con 15+ reglas incluyendo el campo regulatory_impact, y un runner que produce un DataFrame con todos los resultados. Al ejecutar, múltiples FAILs con regulatory_impact='High' — estos son los que deben escalarse a compliance.",
           "tips": [
-            "Este framework es production-ready: cambia el diccionario para tus tablas y ya tienes DQ automatizado.",
-            "El formato del resultado está diseñado para escribirse en una tabla de auditoría (Step 4)."
+            "Este framework es production-ready: cambia el diccionario para tus tablas reales y tienes DQ automatizado.",
+            "Los FAILs con regulatory_impact='High' deberían bloquear la generación de reportes regulatorios hasta corregirse."
           ],
           "warningNote": null
         },
         {
           "id": "gov-step-4",
           "stepNumber": 4,
-          "title": "Scaffold de políticas CLS y RLS",
-          "description": "Genera las definiciones de Row-Level Security y Column-Level Security para los datos del workshop.",
-          "prompt": "Genera los comandos SQL para implementar políticas de seguridad en workshop.gold:\n\n1. **Column-Level Security (CLS)**:\n   - Tabla fact_member_activity: la columna order_value solo debe ser visible para el grupo 'analytics_team'. Para otros, debe mostrar NULL.\n   - Tabla dim_restaurants: latitude y longitude solo visibles para 'geo_team'.\n\n2. **Row-Level Security (RLS)**:\n   - Tabla dim_restaurants: cada usuario solo ve restaurantes de su mercado. Usa una función que mapee el usuario a su market (e.g., user 'ar_team' → market = 'AR').\n   - Tabla fact_daily_kpis: misma lógica (la tabla tiene columna market directamente).\n\n3. **Genera una tabla de mapeo** users_market_mapping con: username, market, role\n\n4. **Genera los GRANT y REVOKE** necesarios para que funcione.\n\n5. **Genera una query de validación** que pruebe que las políticas funcionan.",
-          "expectedOutput": "Comandos SQL para CREATE FUNCTION (row filter), ALTER TABLE SET ROW FILTER, ALTER TABLE ALTER COLUMN SET MASK, y los GRANTs correspondientes. Más una query de validación.",
+          "title": "Scaffold de políticas CLS y RLS para datos bancarios",
+          "description": "Genera los comandos SQL para implementar segregación de datos financieros sensibles, conforme a los requerimientos de la Superintendencia.",
+          "prompt": "Genera los comandos SQL para políticas de seguridad en workshop.gold conformes con regulación bancaria:\n\n1. **Column-Level Security (CLS)**:\n   - Tabla dim_clientes: credit_score y risk_profile solo visibles para grupo 'risk_team'. Para otros: NULL.\n   - Tabla fact_cartera_creditos: outstanding_balance y monthly_payment visibles solo para 'credit_analysts'. Para 'compliance_team': redondear al millar más cercano (para reportes agregados).\n   - Tabla fact_transacciones: amount visible solo para 'operations_team'; para otros usuarios: 0.00 (enmascarado).\n\n2. **Row-Level Security (RLS)**:\n   - Tabla fact_cartera_creditos: cada analista ve solo créditos de su país asignado. Crea una función que mapee usuario → country_code.\n   - Tabla fact_kpis_diarios: misma lógica de país.\n\n3. **Tabla de mapeo**: users_country_access con columnas username, country_code, role\n\n4. **GRANT statements** necesarios para que funcione.\n\n5. **Queries de validación** que confirmen que las políticas funcionan correctamente.\n\nContexto: estas políticas implementan la segregación de información requerida por la normativa bancaria regional.",
+          "expectedOutput": "Comandos SQL para CREATE FUNCTION (row filter), ALTER TABLE SET ROW FILTER, ALTER TABLE ALTER COLUMN SET MASK, GRANTs, y queries de validación. Comentarios explican el driver regulatorio de cada política.",
           "tips": [
-            "CLS y RLS son fundamentales para cumplir con la política de protección de datos personales que definió Governance.",
-            "Una vez implementadas, Genie Spaces y dashboards respetan automáticamente estas políticas."
+            "CLS y RLS son fundamentales para cumplir con el principio de need-to-know en datos financieros sensibles.",
+            "Una vez implementadas, Genie Spaces y dashboards respetan automáticamente estas políticas — el analista solo ve lo que le corresponde."
           ],
-          "warningNote": "Los comandos CLS/RLS requieren permisos de OWNER en las tablas. En el workshop, generamos el código pero no lo ejecutamos."
+          "warningNote": "Los comandos CLS/RLS requieren permisos de OWNER en las tablas. En el workshop, generamos el código correcto pero no lo ejecutamos."
         },
         {
           "id": "gov-step-5",
           "stepNumber": 5,
           "title": "Crea un notebook de Data Academy",
-          "description": "Genera un notebook interactivo de aprendizaje que podrías distribuir como parte del programa Data Academy.",
-          "prompt": "Genera un notebook interactivo de aprendizaje sobre 'Introducción a SQL en Databricks' para el programa Data Academy de Arcos Dorados:\n\nEstructura:\n1. **Introducción** (markdown): qué es SQL, por qué es importante para todos los roles\n2. **Lección 1 - SELECT básico**: explicación + 2 ejercicios con solución oculta\n3. **Lección 2 - Filtros y ORDER BY**: explicación + 2 ejercicios\n4. **Lección 3 - JOIN**: explicación visual (markdown con diagrama ASCII) + 2 ejercicios\n5. **Lección 4 - GROUP BY y agregaciones**: explicación + 2 ejercicios\n6. **Quiz final**: 5 preguntas de opción múltiple (respuestas en celda oculta)\n\nTodas las queries deben usar workshop.gold.* tables.\nCada ejercicio tiene: enunciado, hints, y solución en una celda separada.\nEscribe todo en español.",
-          "expectedOutput": "Un notebook con ~20 celdas: markdown de explicación + celdas de código con ejercicios y soluciones. Listo para compartir como material de Data Academy.",
+          "description": "Genera un notebook interactivo de capacitación SQL para el programa de Data Academy del equipo de riesgo.",
+          "prompt": "Genera un notebook interactivo de aprendizaje sobre 'Análisis de Cartera con SQL en Databricks' para el equipo de riesgo de LAFISE:\n\nEstructura:\n1. **Introducción** (markdown): qué es la tasa de mora, por qué el equipo de riesgo necesita SQL directo, beneficios vs. Excel\n2. **Lección 1 - SELECT básico**: cómo consultar la cartera activa en workshop.gold.fact_cartera_creditos\n3. **Lección 2 - Filtros y WHERE**: identificar créditos en mora por DPD bucket\n4. **Lección 3 - GROUP BY**: calcular la tasa de mora por país y producto\n5. **Lección 4 - JOIN**: cruzar datos de clientes con su cartera para ver el perfil del deudor\n6. **Quiz final**: 5 preguntas sobre escenarios reales de análisis de cartera\n\nCada lección: explicación en markdown + ejercicio con hint + solución en celda oculta.\nTodo en español. Usa workshop.gold.* tables.",
+          "expectedOutput": "Notebook con ~20 celdas. El quiz incluye escenarios reales como '¿Cuántos clientes PYME tienen mora >60 días en Colombia?' y '¿Cuál es el product_type con mayor outstanding_balance promedio en Panamá?'",
           "tips": [
-            "Este patrón puede generar notebooks de aprendizaje sobre cualquier tema: PySpark, MLflow, Genie Spaces.",
-            "Los notebooks generados se pueden subir directamente a Data Academy como materiales de curso."
+            "Este notebook es el material de Data Academy para analistas de riesgo — puedes adaptarlo para otras áreas.",
+            "Las preguntas del quiz cubren exactamente los análisis que el equipo hace semanalmente — después del workshop pueden hacerlo directamente en SQL."
           ],
           "warningNote": null
         },
         {
           "id": "gov-step-6",
           "stepNumber": 6,
-          "title": "Auto-genera data dictionaries",
-          "description": "Crea documentación técnica automática de todas las tablas del workshop.",
-          "prompt": "Genera un notebook que auto-documente las tablas de workshop.gold como un Data Dictionary profesional:\n\nPara cada tabla genera en markdown:\n1. **Nombre y descripción** (infiere del contenido)\n2. **Owner y clasificación** (placeholder)\n3. **Tabla de columnas**: nombre, tipo, nullable, descripción inferida, ejemplo de valor\n4. **Estadísticas clave**: row count, tamaño estimado, última modificación\n5. **Relaciones**: foreign keys identificadas y a qué tabla apuntan\n6. **Notas de calidad**: issues encontrados en el profiling (Step 2)\n\nAl final, genera una tabla resumen tipo índice:\n| Tabla | Filas | Columnas | Descripción | Score DQ |\n\nFormatea todo como markdown limpio que pueda copiarse a Confluence o un wiki.",
-          "expectedOutput": "Un data dictionary completo en markdown para las 5 tablas, con relaciones identificadas y notas de calidad. El índice final sirve como punto de entrada.",
+          "title": "Auto-genera Data Dictionary para auditoría",
+          "description": "Crea documentación técnica automática de las tablas del workshop para el equipo de compliance y el auditor externo.",
+          "prompt": "Genera un notebook que auto-documente las tablas de workshop.gold como Data Dictionary para auditoría bancaria:\n\nPara cada tabla genera en markdown:\n1. **Nombre y descripción de negocio** (infiere del contenido)\n2. **Clasificación de sensibilidad**: PII-Alto, Financiero-Alto, Financiero-Medio, o Público\n3. **Owner placeholder** y fecha de última actualización\n4. **Tabla de columnas**: nombre, tipo, nullable, descripción de negocio, clasificación (PII/Financiero/Público), ejemplo de valor\n5. **Estadísticas**: row count, rango de fechas, valores únicos en columnas clave\n6. **Relaciones**: foreign keys identificadas y a qué tabla apuntan\n7. **Notas de calidad**: issues detectados en el profiling del Step 2\n\nÍndice final:\n| Tabla | Filas | Sensibilidad | Descripción | Score DQ |\n\nFormatea para Confluence.",
+          "expectedOutput": "Data Dictionary completo para las 5 tablas con clasificación explícita. dim_clientes marcado como 'PII-Alto' (customer_name, credit_score), fact_transacciones como 'Financiero-Alto'. El índice final sirve de tabla de contenidos para el auditor.",
           "tips": [
-            "Este output se puede copiar directamente a Confluence como documentación oficial.",
-            "Ejecuta esto periódicamente para mantener la documentación actualizada automáticamente."
+            "Este output se puede copiar directamente a la página de Data Lineage del equipo de Governance en Confluence.",
+            "El auditor externo suele pedir este tipo de documento — generarlo automáticamente ahorra semanas de trabajo manual."
           ],
           "warningNote": null
         },
         {
           "id": "gov-step-7",
           "stepNumber": 7,
-          "title": "Agenda DQ como Job recurrente",
-          "description": "Convierte tu framework de DQ en un Job de Databricks que se ejecute automáticamente.",
-          "prompt": "Genera el código para convertir el framework de DQ del Step 3 en un Job de Databricks automatizado:\n\n1. Crea un notebook 'dq_runner.py' que:\n   - Importe las funciones de DQ del Step 1\n   - Cargue las reglas del Step 3\n   - Ejecute run_all_checks()\n   - Escriba los resultados en una tabla Delta: workshop.gold.dq_audit_log (modo APPEND)\n   - Si hay algún check FAIL, imprima un resumen de alertas\n\n2. Genera el código del Databricks SDK para crear un Job:\n   - Nombre: 'Workshop DQ Monitor'\n   - Schedule: cada lunes a las 7am UTC\n   - Cluster: serverless\n   - Alertas: email si el job falla\n\n3. Muestra cómo consultar el histórico de DQ:\n   - Trend de score por tabla en las últimas 4 semanas\n   - Checks que pasaron de PASS a FAIL (regresiones)",
-          "expectedOutput": "Un notebook DQ runner, código de creación de Job con schedule, y queries para analizar el histórico de calidad.",
+          "title": "Agenda el DQ como Job regulatorio recurrente",
+          "description": "Convierte el framework de DQ en un Job que se ejecute antes del envío de reportes regulatorios.",
+          "prompt": "Genera el código para convertir el framework DQ del Step 3 en un Job automatizado para cumplimiento regulatorio:\n\n1. Notebook 'dq_runner_lafise.py' que:\n   - Cargue las reglas del Step 3\n   - Ejecute run_all_checks()\n   - Escriba resultados en workshop.gold.dq_audit_log (modo APPEND)\n   - Si hay FAILs con regulatory_impact='High', genere un reporte de alerta en formato JSON\n   - Imprima un resumen: total checks, passed, failed por tabla y por regulatory_impact\n\n2. Código Databricks SDK para el Job:\n   - Nombre: 'LAFISE DQ Monitor Regulatorio'\n   - Schedule: diario a las 05:00 UTC (antes del envío de reportes regulatorios de apertura)\n   - Alertas: email al equipo de compliance si hay FAILs de regulatory_impact='High'\n   - Tag: 'regulatory' = 'true'\n\n3. Queries para el Comité de Riesgo:\n   - Trend semanal de Score DQ por tabla (últimas 4 semanas)\n   - Checks que pasaron de PASS a FAIL (regresiones regulatorias)\n   - Ranking de checks con más FAILs históricos",
+          "expectedOutput": "Notebook DQ runner con lógica de alertas escalonadas por regulatory_impact, código de Job con schedule 5am UTC y tag regulatorio, y queries de trending para el Comité de Riesgo.",
           "tips": [
-            "Este es el paso que convierte un análisis puntual en monitoreo continuo.",
-            "La tabla dq_audit_log acumula histórico — puedes detectar degradación de calidad a lo largo del tiempo."
+            "Este Job convierte el análisis puntual en monitoreo continuo — cada mañana tienes el estado de calidad antes de los reportes.",
+            "La tabla dq_audit_log acumula histórico — puedes mostrar al auditor la evolución de calidad en el tiempo."
           ],
           "warningNote": null
         },
@@ -522,13 +522,13 @@
           "id": "gov-step-8",
           "stepNumber": 8,
           "title": "Reflexión: ¿dónde aplicas esto mañana?",
-          "description": "Último paso. Piensa en tus proyectos de governance y Data Academy.",
+          "description": "Último paso. Piensa en tus proyectos de governance, compliance, y Data Academy.",
           "prompt": null,
           "expectedOutput": null,
           "tips": [
-            "1. ¿Qué tablas de producción necesitan un profiling de calidad urgente?",
-            "2. ¿Qué notebook de Data Academy generarías primero para el programa de AI Fluency?",
-            "3. ¿Cómo podrías usar Genie Code para automatizar la generación del entregable de política de datos personales?"
+            "1. ¿Qué tabla de producción necesita un profiling urgente antes de tu próximo reporte regulatorio?",
+            "2. ¿Qué políticas CLS/RLS implementarías primero para cumplir con los requerimientos de segregación de información de la Superintendencia?",
+            "3. ¿Cómo usarías Genie Code para acelerar la preparación del Data Dictionary que pide el auditor externo?"
           ],
           "warningNote": null
         }
@@ -536,19 +536,23 @@
       "faq": [
         {
           "question": "Las funciones de DQ son lentas en tablas grandes",
-          "answer": "Usa .sample(0.1) para probar con un 10% de los datos primero, luego ejecuta en full cuando estés seguro de que funciona."
+          "answer": "Usa .sample(fraction=0.1) para probar con el 10% de los datos primero. Una vez validado el código, ejecuta en full para el reporte oficial."
         },
         {
-          "question": "¿Cómo conecto el DQ framework a alertas reales?",
-          "answer": "El Job de Databricks soporta notificaciones por email, Slack (via webhook), o PagerDuty. Configúralo en el Step 7."
+          "question": "¿Cómo integro el DQ framework con alertas reales?",
+          "answer": "El Job de Databricks soporta notificaciones por email y Slack (via webhook). Configúralo en el Step 7 para el canal del equipo de compliance."
         },
         {
-          "question": "¿Los comandos CLS/RLS del Step 4 se pueden ejecutar?",
-          "answer": "En el workshop no, porque requieren permisos de OWNER. Pero el código generado es correcto y listo para aplicar en producción con los permisos adecuados."
+          "question": "¿Los comandos CLS/RLS del Step 4 se pueden ejecutar en el workspace del workshop?",
+          "answer": "No, porque requieren permisos de OWNER en las tablas. El código generado es correcto y listo para aplicar en producción con los permisos de tu administrador de Unity Catalog."
+        },
+        {
+          "question": "¿Qué significa regulatory_impact='High' en el framework DQ?",
+          "answer": "Significa que un FAIL en ese check afecta directamente la precisión de un reporte regulatorio (cartera, mora, provisiones). Estos FAILs deben resolverse antes del envío a la Superintendencia."
         },
         {
           "question": "¿Puedo generar notebooks de Data Academy sobre otros temas?",
-          "answer": "Sí. Cambia el tema en el prompt del Step 5: 'Introducción a PySpark', 'Cómo usar MLflow', 'Buenas prácticas de Delta Lake', etc."
+          "answer": "Sí. Cambia el tema en el prompt del Step 5: 'Introducción a PySpark', 'Cómo usar MLflow para modelos de scoring', 'Buenas prácticas de Delta Lake para datos bancarios', etc."
         }
       ]
     }

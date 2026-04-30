@@ -1,60 +1,133 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Workshop Data Generator — Arcos Dorados Genie Code Workshop
+# MAGIC # Workshop Data Generator — LAFISE Genie Code Workshop
 # MAGIC
-# MAGIC Generates 5 synthetic McDonald's-themed tables in `workshop.gold`.
-# MAGIC Includes intentional data quality issues for the Governance track.
+# MAGIC Genera 5 tablas sintéticas de datos bancarios en `workshop.gold`.
+# MAGIC Incluye defectos de calidad intencionados para el track de Governance.
 # MAGIC
-# MAGIC **Idempotent** — safe to re-run. Uses `CREATE OR REPLACE TABLE`.
+# MAGIC **Idempotente** — seguro de re-ejecutar. Usa `CREATE OR REPLACE TABLE`.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Configuration
+# MAGIC ## Configuración
 
 # COMMAND ----------
 
 CATALOG = "workshop"
 SCHEMA = "gold"
 
-# Market distribution (matches Arcos Dorados real footprint)
-MARKETS = {
-    "AR": {"country": "Argentina", "restaurants": 120, "cities": ["Buenos Aires", "Córdoba", "Rosario", "Mendoza", "Tucumán", "Mar del Plata", "Salta", "Santa Fe"]},
-    "BR": {"country": "Brasil", "restaurants": 150, "cities": ["São Paulo", "Rio de Janeiro", "Belo Horizonte", "Curitiba", "Porto Alegre", "Salvador", "Brasília", "Recife"]},
-    "MX": {"country": "México", "restaurants": 80, "cities": ["Ciudad de México", "Guadalajara", "Monterrey", "Puebla", "Cancún", "Mérida", "Tijuana", "León"]},
-    "CO": {"country": "Colombia", "restaurants": 40, "cities": ["Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena"]},
-    "CL": {"country": "Chile", "restaurants": 30, "cities": ["Santiago", "Valparaíso", "Concepción", "Viña del Mar", "Temuco"]},
-    "PE": {"country": "Perú", "restaurants": 25, "cities": ["Lima", "Arequipa", "Trujillo", "Cusco"]},
-    "UY": {"country": "Uruguay", "restaurants": 15, "cities": ["Montevideo", "Punta del Este", "Salto"]},
-    "CR": {"country": "Costa Rica", "restaurants": 15, "cities": ["San José", "Heredia", "Alajuela"]},
-    "PA": {"country": "Panamá", "restaurants": 15, "cities": ["Ciudad de Panamá", "David", "Colón"]},
-    "EC": {"country": "Ecuador", "restaurants": 10, "cities": ["Quito", "Guayaquil", "Cuenca"]},
+# Presencia de LAFISE por país
+COUNTRIES = {
+    "NI": {
+        "name": "Nicaragua",
+        "customers": 500,
+        "branches": 28,
+        "cities": ["Managua", "León", "Granada", "Masaya", "Estelí", "Matagalpa", "Chinandega", "Rivas"],
+        "lat_range": (11.0, 15.0),
+        "lon_range": (-87.5, -83.0),
+        "base_portfolio": 180_000_000,   # USD
+    },
+    "CR": {
+        "name": "Costa Rica",
+        "customers": 380,
+        "branches": 22,
+        "cities": ["San José", "Heredia", "Alajuela", "Cartago", "Liberia", "Pérez Zeledón"],
+        "lat_range": (8.0, 11.2),
+        "lon_range": (-85.9, -82.5),
+        "base_portfolio": 220_000_000,
+    },
+    "HN": {
+        "name": "Honduras",
+        "customers": 320,
+        "branches": 18,
+        "cities": ["Tegucigalpa", "San Pedro Sula", "Choloma", "La Ceiba", "El Progreso"],
+        "lat_range": (13.0, 16.5),
+        "lon_range": (-89.2, -83.2),
+        "base_portfolio": 140_000_000,
+    },
+    "PA": {
+        "name": "Panamá",
+        "customers": 270,
+        "branches": 15,
+        "cities": ["Ciudad de Panamá", "David", "Santiago", "Colón", "La Chorrera"],
+        "lat_range": (7.2, 9.6),
+        "lon_range": (-83.0, -77.2),
+        "base_portfolio": 260_000_000,
+    },
+    "DO": {
+        "name": "Rep. Dominicana",
+        "customers": 250,
+        "branches": 14,
+        "cities": ["Santo Domingo", "Santiago", "La Romana", "San Pedro de Macorís", "Puerto Plata"],
+        "lat_range": (17.5, 19.9),
+        "lon_range": (-72.0, -68.3),
+        "base_portfolio": 120_000_000,
+    },
+    "SV": {
+        "name": "El Salvador",
+        "customers": 220,
+        "branches": 13,
+        "cities": ["San Salvador", "Santa Ana", "San Miguel", "Soyapango", "Nueva San Salvador"],
+        "lat_range": (13.1, 14.4),
+        "lon_range": (-90.1, -87.7),
+        "base_portfolio": 100_000_000,
+    },
+    "GT": {
+        "name": "Guatemala",
+        "customers": 170,
+        "branches": 10,
+        "cities": ["Ciudad de Guatemala", "Quetzaltenango", "Villa Nueva", "Escuintla", "Cobán"],
+        "lat_range": (13.7, 17.8),
+        "lon_range": (-92.2, -88.2),
+        "base_portfolio": 90_000_000,
+    },
+    "CO": {
+        "name": "Colombia",
+        "customers": 290,
+        "branches": 16,
+        "cities": ["Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena", "Bucaramanga", "Pereira"],
+        "lat_range": (-4.2, 12.5),
+        "lon_range": (-77.0, -66.9),
+        "base_portfolio": 195_000_000,
+    },
 }
 
-RESTAURANT_TYPES = ["Freestanding", "Mall", "Drive-Thru", "McCafe Express"]
-LOYALTY_TIERS = ["Bronze", "Silver", "Gold"]
-CATEGORIES = ["Burgers", "McCafe", "Breakfast", "Nuggets", "Desserts", "Sides", "Beverages"]
-CHANNELS = ["In-Store", "App", "Delivery"]
-DISCOUNT_TYPES = ["percentage", "bogo", "fixed_amount", "free_item"]
+SEGMENTS = ["Retail", "PYME", "Corporativo", "Premium"]
+SEGMENT_WEIGHTS = [0.55, 0.25, 0.10, 0.10]
+RISK_PROFILES = ["A", "B", "C", "D", "E"]
+RISK_WEIGHTS = [0.30, 0.35, 0.20, 0.10, 0.05]
+KYC_STATUSES = ["Vigente", "Vencido", "Pendiente"]
+KYC_WEIGHTS = [0.80, 0.12, 0.08]
+PRODUCT_TYPES = ["Consumo", "Hipoteca", "Vehiculo", "Comercial", "Tarjeta"]
+PRODUCT_WEIGHTS = [0.38, 0.22, 0.18, 0.14, 0.08]
+TRANSACTION_TYPES = ["Débito", "Crédito", "Transferencia", "Pago"]
+CHANNELS = ["Sucursal", "App", "ATM", "Web", "Corresponsal"]
+CHANNEL_WEIGHTS = [0.25, 0.35, 0.18, 0.15, 0.07]
+PRODUCTS_TX = ["Cuenta_Ahorros", "Cuenta_Corriente", "Tarjeta_Credito", "Deposito_Plazo"]
+BRANCH_TYPES = ["Sucursal", "Agencia", "Corresponsal", "Digital"]
+DPD_BUCKETS = ["Al_Dia", "1-30", "31-60", "61-90", "Mayor_90"]
 
+total_customers = sum(c["customers"] for c in COUNTRIES.values())
+total_branches = sum(c["branches"] for c in COUNTRIES.values())
 print(f"Target: {CATALOG}.{SCHEMA}")
-print(f"Total restaurants: {sum(m['restaurants'] for m in MARKETS.values())}")
+print(f"Total clientes: {total_customers:,} | Total sucursales: {total_branches}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Create Catalog & Schema
+# MAGIC ## Crear Catálogo y Schema
 
 # COMMAND ----------
 
 spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
-print(f"✅ {CATALOG}.{SCHEMA} ready")
+print(f"✅ {CATALOG}.{SCHEMA} listo")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Table 1: dim_restaurants
+# MAGIC ## Tabla 1: dim_clientes
 
 # COMMAND ----------
 
@@ -64,402 +137,476 @@ from datetime import date, timedelta
 
 np.random.seed(42)
 
-rows = []
-restaurant_id = 0
+customer_rows = []
+customer_id_counter = 0
 
-for market_code, info in MARKETS.items():
-    for i in range(info["restaurants"]):
-        restaurant_id += 1
-        rid = f"REST-{market_code}-{restaurant_id:04d}"
+for cc, info in COUNTRIES.items():
+    for i in range(info["customers"]):
+        customer_id_counter += 1
+        cid = f"LAFISE-{cc}-CLI-{customer_id_counter:06d}"
         city = np.random.choice(info["cities"])
-        rtype = np.random.choice(RESTAURANT_TYPES, p=[0.35, 0.30, 0.25, 0.10])
-        opened = date(2005, 1, 1) + timedelta(days=int(np.random.uniform(0, 365 * 19)))
+        segment = np.random.choice(SEGMENTS, p=SEGMENT_WEIGHTS)
+        risk = np.random.choice(RISK_PROFILES, p=RISK_WEIGHTS)
+        kyc = np.random.choice(KYC_STATUSES, p=KYC_WEIGHTS)
 
-        # Approximate lat/lon ranges per market
-        lat_ranges = {"AR": (-38, -26), "BR": (-23, -3), "MX": (19, 25), "CO": (2, 8),
-                      "CL": (-38, -30), "PE": (-14, -6), "UY": (-35, -33), "CR": (9, 11),
-                      "PA": (7, 10), "EC": (-3, 1)}
-        lon_ranges = {"AR": (-68, -57), "BR": (-51, -35), "MX": (-104, -96), "CO": (-76, -72),
-                      "CL": (-72, -70), "PE": (-77, -75), "UY": (-57, -54), "CR": (-85, -83),
-                      "PA": (-80, -77), "EC": (-80, -77)}
+        # Credit score correlated with risk profile
+        score_ranges = {"A": (720, 850), "B": (620, 720), "C": (520, 620), "D": (420, 520), "E": (300, 420)}
+        credit_score = int(np.random.uniform(*score_ranges[risk]))
 
-        lat = np.random.uniform(*lat_ranges[market_code])
-        lon = np.random.uniform(*lon_ranges[market_code])
-        is_24h = np.random.random() < 0.15
-        capacity = int(np.random.choice([40, 60, 80, 100, 120, 150, 200], p=[0.05, 0.15, 0.25, 0.25, 0.15, 0.10, 0.05]))
+        acquisition_date = date(2010, 1, 1) + timedelta(days=int(np.random.uniform(0, 365 * 14)))
 
-        rows.append({
-            "restaurant_id": rid,
-            "restaurant_name": f"McDonald's {city} #{i+1}",
-            "market": market_code,
-            "country_name": info["country"],
+        # Relationship managers per country
+        rm_names = [
+            f"Ana García ({cc})", f"Carlos Méndez ({cc})", f"María López ({cc})",
+            f"Jorge Solís ({cc})", f"Patricia Vega ({cc})", f"Roberto Acuña ({cc})"
+        ]
+        rm = np.random.choice(rm_names)
+
+        customer_rows.append({
+            "customer_id": cid,
+            "customer_name": f"Cliente {cc} {i+1:04d}",
+            "segment": segment,
+            "country_code": cc,
+            "country_name": info["name"],
             "city": city,
-            "restaurant_type": rtype,
-            "opening_date": opened,
+            "credit_score": credit_score,
+            "risk_profile": risk,
+            "kyc_status": kyc,
+            "acquisition_date": acquisition_date,
+            "relationship_manager": rm,
+        })
+
+df_customers = pd.DataFrame(customer_rows)
+
+# ── Inyectar defectos DQ (contexto bancario) ──
+# 10 filas: NULL country_code
+null_cc_idx = np.random.choice(len(df_customers), 10, replace=False)
+df_customers.loc[null_cc_idx, "country_code"] = None
+
+# 6 filas: fecha de adquisición futura
+future_idx = np.random.choice(len(df_customers), 6, replace=False)
+df_customers.loc[future_idx, "acquisition_date"] = date(2027, 3, 15)
+
+# 5 filas: customer_id duplicado
+dup_idx = np.random.choice(len(df_customers), 5, replace=False)
+for idx in dup_idx:
+    source_idx = np.random.choice([i for i in range(len(df_customers)) if i != idx])
+    df_customers.loc[idx, "customer_id"] = df_customers.loc[source_idx, "customer_id"]
+
+# 15 filas: segment en minúsculas (inconsistencia de capitalización)
+case_idx = np.random.choice(len(df_customers), 15, replace=False)
+df_customers.loc[case_idx, "segment"] = df_customers.loc[case_idx, "segment"].str.lower()
+
+# 18 filas: credit_score fuera de rango (<300 o >850)
+score_idx = np.random.choice(len(df_customers), 18, replace=False)
+df_customers.loc[score_idx[:9], "credit_score"] = 150   # imposible — por debajo del mínimo
+df_customers.loc[score_idx[9:], "credit_score"] = 950   # imposible — por encima del máximo
+
+print(f"dim_clientes: {len(df_customers)} filas")
+print(f"  Defectos DQ: 10 null country, 6 fechas futuras, 5 IDs dup, 15 segment minúsculas, 18 scores inválidos")
+
+sdf = spark.createDataFrame(df_customers)
+sdf.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.dim_clientes")
+print(f"✅ {CATALOG}.{SCHEMA}.dim_clientes escrita")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Tabla 2: dim_sucursales
+
+# COMMAND ----------
+
+branch_rows = []
+branch_counter = 0
+valid_branch_ids = []
+
+for cc, info in COUNTRIES.items():
+    for i in range(info["branches"]):
+        branch_counter += 1
+        bid = f"SUC-{cc}-{branch_counter:04d}"
+        city = np.random.choice(info["cities"])
+        btype = np.random.choice(BRANCH_TYPES, p=[0.40, 0.30, 0.20, 0.10])
+        lat = np.random.uniform(*info["lat_range"])
+        lon = np.random.uniform(*info["lon_range"])
+        region = np.random.choice(["Norte", "Centro", "Sur", "Capital"])
+        valid_branch_ids.append(bid)
+
+        branch_rows.append({
+            "branch_id": bid,
+            "branch_name": f"LAFISE {city} #{i+1}",
+            "city": city,
+            "country_code": cc,
+            "country_name": info["name"],
+            "branch_type": btype,
+            "region": region,
             "latitude": round(lat, 6),
             "longitude": round(lon, 6),
-            "is_24h": is_24h,
-            "seating_capacity": capacity,
         })
 
-df_restaurants = pd.DataFrame(rows)
+df_branches = pd.DataFrame(branch_rows)
 
-# ── Inject DQ issues ──
-# 15 rows with NULL market
-null_idx = np.random.choice(len(df_restaurants), 15, replace=False)
-df_restaurants.loc[null_idx, "market"] = None
+# ── Inyectar defectos DQ ──
+# 8 filas: NULL country_code
+null_cc_b = np.random.choice(len(df_branches), 8, replace=False)
+df_branches.loc[null_cc_b, "country_code"] = None
 
-# 8 rows with future opening_date
-future_idx = np.random.choice(len(df_restaurants), 8, replace=False)
-df_restaurants.loc[future_idx, "opening_date"] = pd.Timestamp("2027-06-15").date()
+# 3 filas: branch_id duplicado
+dup_b = np.random.choice(len(df_branches), 3, replace=False)
+for idx in dup_b:
+    src = np.random.choice([i for i in range(len(df_branches)) if i != idx])
+    df_branches.loc[idx, "branch_id"] = df_branches.loc[src, "branch_id"]
 
-# 12 rows with lat/lon = 0.0, 0.0
-zero_idx = np.random.choice(len(df_restaurants), 12, replace=False)
-df_restaurants.loc[zero_idx, ["latitude", "longitude"]] = 0.0
+# 10 filas: branch_type en minúsculas
+case_b = np.random.choice(len(df_branches), 10, replace=False)
+df_branches.loc[case_b, "branch_type"] = df_branches.loc[case_b, "branch_type"].str.lower()
 
-# 5 duplicate restaurant_ids
-dup_idx = np.random.choice(len(df_restaurants), 5, replace=False)
-for idx in dup_idx:
-    source_idx = np.random.choice([i for i in range(len(df_restaurants)) if i != idx])
-    df_restaurants.loc[idx, "restaurant_id"] = df_restaurants.loc[source_idx, "restaurant_id"]
+print(f"dim_sucursales: {len(df_branches)} filas")
+print(f"  Defectos DQ: 8 null country, 3 IDs dup, 10 branch_type minúsculas")
 
-# 20 rows with inconsistent casing on restaurant_type
-case_idx = np.random.choice(len(df_restaurants), 20, replace=False)
-df_restaurants.loc[case_idx, "restaurant_type"] = df_restaurants.loc[case_idx, "restaurant_type"].str.lower()
-
-print(f"dim_restaurants: {len(df_restaurants)} rows")
-print(f"  DQ issues: 15 null markets, 8 future dates, 12 zero coords, 5 dup IDs, 20 inconsistent casing")
-
-# Write to Delta
-sdf = spark.createDataFrame(df_restaurants)
-sdf.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.dim_restaurants")
-print(f"✅ {CATALOG}.{SCHEMA}.dim_restaurants written")
+sdf_b = spark.createDataFrame(df_branches)
+sdf_b.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.dim_sucursales")
+print(f"✅ {CATALOG}.{SCHEMA}.dim_sucursales escrita")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Table 2: fact_daily_sales
+# MAGIC ## Tabla 3: fact_transacciones
 
 # COMMAND ----------
 
-# Get valid restaurant IDs (before DQ issues) for FK generation
-valid_restaurants = df_restaurants["restaurant_id"].dropna().unique().tolist()
+valid_customer_ids = df_customers["customer_id"].dropna().unique().tolist()
+date_range = pd.date_range("2025-01-01", "2026-04-30", freq="D")
+tx_rows = []
 
-date_range = pd.date_range("2024-01-01", "2026-04-13", freq="D")
-all_sales = []
+# Generar transacciones para los primeros 600 clientes (muestra representativa)
+sample_customers = valid_customer_ids[:600]
 
-for rid in valid_restaurants[:500]:  # cap at 500
-    # Base revenue varies by market
-    market = df_restaurants[df_restaurants["restaurant_id"] == rid]["market"].iloc[0]
-    if pd.isna(market):
-        market = "AR"
+for cid in sample_customers:
+    # Obtener datos del cliente
+    cust = df_customers[df_customers["customer_id"] == cid].iloc[0]
+    cc = cust["country_code"] if pd.notna(cust["country_code"]) else "NI"
+    segment = cust["segment"]
 
-    base_rev = {"AR": 3500, "BR": 5000, "MX": 4000, "CO": 2500, "CL": 3000,
-                "PE": 2000, "UY": 2200, "CR": 2800, "PA": 2600, "EC": 1800}.get(market, 3000)
-    base_txn = int(base_rev / 8)  # ~$8 avg ticket
+    # Frecuencia según segmento
+    freq_per_month = {"Retail": 8, "PYME": 15, "Corporativo": 25, "Premium": 12}.get(segment, 8)
+
+    # Monto base según segmento y país
+    country_mult = {"NI": 1.0, "CR": 1.8, "HN": 0.9, "PA": 2.2, "DO": 1.0, "SV": 0.95, "GT": 0.85, "CO": 1.3}
+    base_amount = {"Retail": 350, "PYME": 5000, "Corporativo": 50000, "Premium": 8000}.get(segment, 350)
+    base_amount *= country_mult.get(cc, 1.0)
+
+    branch_pool = [b for b in valid_branch_ids if cc in b]
+    if not branch_pool:
+        branch_pool = valid_branch_ids[:5]
 
     for d in date_range:
-        # Weekly pattern: weekends higher
-        dow_mult = {0: 0.85, 1: 0.80, 2: 0.85, 3: 0.90, 4: 1.05, 5: 1.25, 6: 1.20}[d.dayofweek]
+        # Probabilidad diaria de transacción
+        if np.random.random() < freq_per_month / 30:
+            n_tx = np.random.randint(1, 4)
+            for _ in range(n_tx):
+                amount = max(1.0, np.random.lognormal(np.log(base_amount), 0.6))
+                tx_type = np.random.choice(TRANSACTION_TYPES)
+                channel = np.random.choice(CHANNELS, p=CHANNEL_WEIGHTS)
+                product = np.random.choice(PRODUCTS_TX)
+                status = np.random.choice(["Aprobada", "Rechazada", "Pendiente"], p=[0.88, 0.08, 0.04])
+                branch = np.random.choice(branch_pool)
 
-        # Monthly seasonality
-        month_mult = {1: 0.90, 2: 0.85, 3: 0.92, 4: 0.95, 5: 0.98, 6: 1.00,
-                      7: 1.05, 8: 1.02, 9: 0.95, 10: 1.00, 11: 1.05, 12: 1.25}[d.month]
+                tx_rows.append({
+                    "transaction_id": f"TX-{cc}-{len(tx_rows)+1:08d}",
+                    "customer_id": cid,
+                    "branch_id": branch,
+                    "transaction_date": d.date(),
+                    "amount": round(amount, 2),
+                    "transaction_type": tx_type,
+                    "channel": channel,
+                    "product": product,
+                    "currency": "USD",
+                    "status": status,
+                })
 
-        # YoY growth ~3%
-        years_from_start = (d - pd.Timestamp("2024-01-01")).days / 365
-        growth = 1 + 0.03 * years_from_start
+df_tx = pd.DataFrame(tx_rows)
 
-        # Random noise
-        noise = np.random.normal(1.0, 0.12)
+# ── Inyectar defectos DQ ──
+# 150 filas: amount = 0 con status 'Aprobada'
+zero_amt_idx = np.random.choice(len(df_tx), 150, replace=False)
+df_tx.loc[zero_amt_idx, "amount"] = 0.0
+df_tx.loc[zero_amt_idx, "status"] = "Aprobada"
 
-        revenue = base_rev * dow_mult * month_mult * growth * noise
-        transactions = int(base_txn * dow_mult * month_mult * growth * np.random.normal(1.0, 0.08))
-        transactions = max(transactions, 50)
-        items = int(transactions * np.random.uniform(1.8, 2.5))
-        avg_ticket = round(revenue / max(transactions, 1), 2)
+# 30 filas: NULL transaction_date
+null_date_idx = np.random.choice(len(df_tx), 30, replace=False)
+df_tx.loc[null_date_idx, "transaction_date"] = None
 
-        # Daypart splits
-        dp_breakfast = round(np.random.uniform(0.05, 0.20), 3)
-        dp_lunch = round(np.random.uniform(0.25, 0.45), 3)
-        dp_dinner = round(np.random.uniform(0.20, 0.35), 3)
-        dp_latenight = round(1.0 - dp_breakfast - dp_lunch - dp_dinner, 3)
+# 60 filas: customer_id huérfano (no existe en dim_clientes — integridad referencial rota)
+orphan_cids = [f"LAFISE-XX-CLI-{900000+i:06d}" for i in range(60)]
+orphan_idx = np.random.choice(len(df_tx), 60, replace=False)
+for i, idx in enumerate(orphan_idx):
+    df_tx.loc[idx, "customer_id"] = orphan_cids[i]
 
-        delivery_pct = round(np.random.uniform(0.05, 0.35), 3)
+# 25 filas: amount negativo en transacciones no-reversión
+neg_idx = np.random.choice(len(df_tx), 25, replace=False)
+df_tx.loc[neg_idx, "amount"] = -abs(df_tx.loc[neg_idx, "amount"])
 
-        all_sales.append({
-            "sale_date": d.date(),
-            "restaurant_id": rid,
-            "transactions": transactions,
-            "gross_revenue": round(revenue, 2),
-            "items_sold": items,
-            "avg_ticket": avg_ticket,
-            "daypart_breakfast": dp_breakfast,
-            "daypart_lunch": dp_lunch,
-            "daypart_dinner": dp_dinner,
-            "daypart_latenight": dp_latenight,
-            "delivery_pct": delivery_pct,
-        })
+print(f"fact_transacciones: {len(df_tx):,} filas")
+print(f"  Defectos DQ: 150 monto cero aprobado, 30 null fecha, 60 clientes huérfanos, 25 montos negativos")
 
-df_sales = pd.DataFrame(all_sales)
-
-# ── Inject DQ issues ──
-# 200 rows: revenue = 0 but transactions > 0
-zero_rev_idx = np.random.choice(len(df_sales), 200, replace=False)
-df_sales.loc[zero_rev_idx, "gross_revenue"] = 0.0
-
-# 50 rows: negative avg_ticket
-neg_ticket_idx = np.random.choice(len(df_sales), 50, replace=False)
-df_sales.loc[neg_ticket_idx, "avg_ticket"] = -1.0
-
-# 30 rows: NULL sale_date
-null_date_idx = np.random.choice(len(df_sales), 30, replace=False)
-df_sales.loc[null_date_idx, "sale_date"] = None
-
-# 40 rows: daypart sums out of range (>1.05 or <0.90)
-bad_daypart_idx = np.random.choice(len(df_sales), 40, replace=False)
-df_sales.loc[bad_daypart_idx, "daypart_lunch"] = df_sales.loc[bad_daypart_idx, "daypart_lunch"] + 0.15
-
-print(f"fact_daily_sales: {len(df_sales)} rows")
-print(f"  DQ issues: 200 zero revenue, 50 negative tickets, 30 null dates, 40 bad dayparts")
-
-# Write in batches to avoid OOM
-sdf_sales = spark.createDataFrame(df_sales)
-sdf_sales.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_daily_sales")
-print(f"✅ {CATALOG}.{SCHEMA}.fact_daily_sales written")
+sdf_tx = spark.createDataFrame(df_tx)
+sdf_tx.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_transacciones")
+print(f"✅ {CATALOG}.{SCHEMA}.fact_transacciones escrita")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Table 3: fact_member_activity
+# MAGIC ## Tabla 4: fact_cartera_creditos
 
 # COMMAND ----------
 
-member_rows = []
-n_members = 5000  # unique members
-member_ids = [f"MCR-{np.random.choice(list(MARKETS.keys()))}-{i:06d}" for i in range(1, n_members + 1)]
-activity_dates = pd.date_range("2025-10-01", "2026-04-13", freq="D")
+loan_rows = []
+loan_counter = 0
 
-for _ in range(200000):
-    mid = np.random.choice(member_ids)
-    market_code = mid.split("-")[1]
-    rid = np.random.choice(valid_restaurants[:500])
-    ad = pd.Timestamp(np.random.choice(activity_dates)).date()
-    tier = np.random.choice(LOYALTY_TIERS, p=[0.50, 0.35, 0.15])
-    points_e = int(np.random.uniform(10, 500))
-    points_r = int(np.random.uniform(0, 2000)) if np.random.random() < 0.3 else 0
-    order_val = round(np.random.uniform(5, 45), 2)
-    cat = np.random.choice(CATEGORIES)
-    channel = np.random.choice(CHANNELS, p=[0.45, 0.30, 0.25])
+for cc, info in COUNTRIES.items():
+    country_customers = df_customers[df_customers["country_code"] == cc]["customer_id"].tolist()
+    base_port = info["base_portfolio"]
+    n_loans = int(base_port / 25_000)   # ~25K USD promedio por crédito
 
-    member_rows.append({
-        "activity_date": ad,
-        "member_id": mid,
-        "restaurant_id": rid,
-        "market": market_code,
-        "loyalty_tier": tier,
-        "points_earned": points_e,
-        "points_redeemed": points_r,
-        "order_value": order_val,
-        "favorite_category": cat,
-        "channel": channel,
-    })
+    for i in range(n_loans):
+        loan_counter += 1
+        product = np.random.choice(PRODUCT_TYPES, p=PRODUCT_WEIGHTS)
+        loan_id = f"LAFISE-{cc}-{product[:3].upper()}-{loan_counter:06d}"
 
-df_members = pd.DataFrame(member_rows)
+        cid = np.random.choice(country_customers) if country_customers else f"LAFISE-{cc}-CLI-000001"
 
-# ── Inject DQ issues ──
-# 100 rows: lowercase loyalty_tier
-tier_case_idx = np.random.choice(len(df_members), 100, replace=False)
-df_members.loc[tier_case_idx, "loyalty_tier"] = df_members.loc[tier_case_idx, "loyalty_tier"].str.lower()
+        disb_date = date(2020, 1, 1) + timedelta(days=int(np.random.uniform(0, 365 * 5)))
 
-# 40 rows: negative points_earned
-neg_pts_idx = np.random.choice(len(df_members), 40, replace=False)
-df_members.loc[neg_pts_idx, "points_earned"] = -50
+        # Plazo según producto
+        term_months = {
+            "Consumo": np.random.choice([12, 24, 36, 48, 60]),
+            "Hipoteca": np.random.choice([120, 180, 240, 300]),
+            "Vehiculo": np.random.choice([24, 36, 48, 60]),
+            "Comercial": np.random.choice([12, 24, 36]),
+            "Tarjeta": 12,
+        }[product]
 
-# 25 rows: orphan market code "XX"
-orphan_idx = np.random.choice(len(df_members), 25, replace=False)
-df_members.loc[orphan_idx, "market"] = "XX"
-df_members.loc[orphan_idx, "member_id"] = "MCR-XX-000000"
+        maturity_date = disb_date + timedelta(days=term_months * 30)
 
-# 80 rows: restaurant_id not in dim_restaurants (referential integrity break)
-fake_rids = [f"REST-ZZ-{9000+i:04d}" for i in range(80)]
-ref_break_idx = np.random.choice(len(df_members), 80, replace=False)
-for i, idx in enumerate(ref_break_idx):
-    df_members.loc[idx, "restaurant_id"] = fake_rids[i]
+        # Monto original según producto y país
+        amount_ranges = {
+            "Consumo": (2000, 25000),
+            "Hipoteca": (40000, 250000),
+            "Vehiculo": (8000, 45000),
+            "Comercial": (10000, 500000),
+            "Tarjeta": (500, 10000),
+        }
+        original_amount = round(np.random.uniform(*amount_ranges[product]), 2)
 
-print(f"fact_member_activity: {len(df_members)} rows")
-print(f"  DQ issues: 100 lowercase tiers, 40 negative points, 25 orphan XX, 80 ref integrity breaks")
+        # Saldo pendiente (entre 0 y original)
+        elapsed_pct = min(1.0, (date(2026, 4, 30) - disb_date).days / (term_months * 30))
+        balance_pct = max(0, 1 - elapsed_pct * np.random.uniform(0.8, 1.2))
+        outstanding = round(original_amount * balance_pct, 2)
+        monthly_pmt = round(original_amount / term_months * np.random.uniform(1.0, 1.05), 2)
 
-sdf_members = spark.createDataFrame(df_members)
-sdf_members.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_member_activity")
-print(f"✅ {CATALOG}.{SCHEMA}.fact_member_activity written")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Table 4: fact_promo_events
-
-# COMMAND ----------
-
-promo_rows = []
-promo_names = [
-    "McCombo Verano", "2x1 Big Mac", "McFlurry Festival", "Desayuno Express",
-    "Happy Meal Promo", "McDelivery Free", "Nuggets x20", "Café Gratis",
-    "Sundae Day", "Cuarto de Libra Promo", "McWrap Launch", "Combo Familiar",
-    "Student Discount", "App Exclusive", "Loyalty Double Points",
-]
-
-for year in [2024, 2025, 2026]:
-    n_promos = 60 if year < 2026 else 30
-    for i in range(n_promos):
-        start = date(year, 1, 1) + timedelta(days=int(np.random.uniform(0, 330 if year < 2026 else 100)))
-        duration = int(np.random.uniform(7, 45))
-        end = start + timedelta(days=duration)
-        market = np.random.choice(list(MARKETS.keys()) + ["ALL"], p=[0.08]*10 + [0.20])
-        dtype = np.random.choice(DISCOUNT_TYPES, p=[0.40, 0.25, 0.20, 0.15])
-        dval = {"percentage": np.random.choice([10, 15, 20, 25, 30, 50]),
-                "bogo": 1, "fixed_amount": np.random.choice([2, 3, 5, 10]),
-                "free_item": 0}[dtype]
-        target_tier = np.random.choice([None, "Gold", "Silver", "Bronze"], p=[0.5, 0.2, 0.2, 0.1])
-        target_daypart = np.random.choice([None, "Breakfast", "Lunch", "Dinner"], p=[0.6, 0.15, 0.15, 0.1])
-        redemptions = int(np.random.uniform(500, 50000))
-        budget = round(np.random.uniform(5000, 200000), 2) if np.random.random() < 0.8 else None
-
-        promo_rows.append({
-            "promo_id": f"PROMO-{year}-{i+1:03d}",
-            "promo_name": np.random.choice(promo_names),
-            "start_date": start,
-            "end_date": end,
-            "market": market,
-            "discount_type": dtype,
-            "discount_value": float(dval),
-            "target_tier": target_tier,
-            "target_daypart": target_daypart,
-            "redemption_count": redemptions,
-            "budget_usd": budget,
-        })
-
-df_promos = pd.DataFrame(promo_rows)
-
-# ── Inject DQ issues ──
-# 3 promos: end_date BEFORE start_date
-bad_date_idx = np.random.choice(len(df_promos), 3, replace=False)
-for idx in bad_date_idx:
-    df_promos.loc[idx, "end_date"] = df_promos.loc[idx, "start_date"] - timedelta(days=10)
-
-# 5 promos: discount_value > 100 for percentage type
-pct_idx = df_promos[df_promos["discount_type"] == "percentage"].index
-if len(pct_idx) >= 5:
-    bad_pct_idx = np.random.choice(pct_idx, 5, replace=False)
-    df_promos.loc[bad_pct_idx, "discount_value"] = 150.0
-
-# 10 promos: NULL promo_name
-null_name_idx = np.random.choice(len(df_promos), 10, replace=False)
-df_promos.loc[null_name_idx, "promo_name"] = None
-
-print(f"fact_promo_events: {len(df_promos)} rows")
-print(f"  DQ issues: 3 inverted dates, 5 impossible discounts, 10 null names")
-
-sdf_promos = spark.createDataFrame(df_promos)
-sdf_promos.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_promo_events")
-print(f"✅ {CATALOG}.{SCHEMA}.fact_promo_events written")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Table 5: fact_daily_kpis
-
-# COMMAND ----------
-
-# Pre-aggregate from fact_daily_sales by market + date
-kpi_rows = []
-markets_list = list(MARKETS.keys())
-
-for market_code in markets_list:
-    market_rids = df_restaurants[df_restaurants["market"] == market_code]["restaurant_id"].tolist()
-    n_restaurants = len(market_rids)
-
-    for d in date_range:
-        d_date = d.date()
-        market_sales = df_sales[(df_sales["restaurant_id"].isin(market_rids)) & (df_sales["sale_date"] == d_date)]
-
-        if len(market_sales) == 0:
-            # Generate synthetic KPI if no sales data for this market-date
-            total_txn = int(np.random.uniform(5000, 20000))
-            total_rev = round(total_txn * np.random.uniform(7, 12), 2)
+        # Mora — distribución realista por perfil de riesgo
+        cust_data = df_customers[df_customers["customer_id"] == cid]
+        if len(cust_data) > 0:
+            risk = cust_data.iloc[0]["risk_profile"]
         else:
-            total_txn = int(market_sales["transactions"].sum())
-            total_rev = round(market_sales["gross_revenue"].sum(), 2)
+            risk = "B"
 
-        avg_ticket = round(total_rev / max(total_txn, 1), 2)
-        active_members = int(np.random.uniform(500, 5000))
-        new_members = int(np.random.uniform(10, 200))
-        delivery_pct = round(np.random.uniform(0.08, 0.30), 3)
+        dpd_probs = {
+            "A": [0.90, 0.06, 0.025, 0.010, 0.005],
+            "B": [0.82, 0.10, 0.045, 0.025, 0.010],
+            "C": [0.65, 0.16, 0.090, 0.065, 0.035],
+            "D": [0.42, 0.22, 0.160, 0.120, 0.080],
+            "E": [0.20, 0.18, 0.160, 0.180, 0.280],
+        }
+        dpd_bucket = np.random.choice(DPD_BUCKETS, p=dpd_probs.get(risk, dpd_probs["B"]))
 
-        # YoY growth (NULL for first year)
+        dpd_ranges = {"Al_Dia": (0, 0), "1-30": (1, 30), "31-60": (31, 60), "61-90": (61, 90), "Mayor_90": (91, 730)}
+        days_past_due = int(np.random.uniform(*dpd_ranges[dpd_bucket]))
+
+        status_map = {"Al_Dia": "Vigente", "1-30": "Vigente", "31-60": "Vencido", "61-90": "Vencido", "Mayor_90": "Castigado"}
+        status = status_map[dpd_bucket]
+
+        # Tasa de interés según producto y país (tasas centroamericanas)
+        rate_ranges = {
+            "Consumo": (0.14, 0.32),
+            "Hipoteca": (0.08, 0.15),
+            "Vehiculo": (0.10, 0.20),
+            "Comercial": (0.10, 0.25),
+            "Tarjeta": (0.24, 0.48),
+        }
+        interest_rate = round(np.random.uniform(*rate_ranges[product]), 4)
+
+        loan_rows.append({
+            "loan_id": loan_id,
+            "customer_id": cid,
+            "product_type": product,
+            "disbursement_date": disb_date,
+            "maturity_date": maturity_date,
+            "original_amount": original_amount,
+            "outstanding_balance": outstanding,
+            "monthly_payment": monthly_pmt,
+            "days_past_due": days_past_due,
+            "dpd_bucket": dpd_bucket,
+            "status": status,
+            "interest_rate": interest_rate,
+            "country_code": cc,
+        })
+
+df_loans = pd.DataFrame(loan_rows)
+
+# ── Inyectar defectos DQ ──
+# 8 filas: days_past_due negativo (imposible)
+neg_dpd_idx = np.random.choice(len(df_loans), 8, replace=False)
+df_loans.loc[neg_dpd_idx, "days_past_due"] = -np.random.randint(1, 30, 8)
+
+# 4 filas: maturity_date antes de disbursement_date
+bad_maturity_idx = np.random.choice(len(df_loans), 4, replace=False)
+df_loans.loc[bad_maturity_idx, "maturity_date"] = df_loans.loc[bad_maturity_idx, "disbursement_date"] - timedelta(days=180)
+
+# 10 filas: outstanding_balance > original_amount * 1.2 (incapitalizaciones mal registradas)
+over_balance_idx = np.random.choice(len(df_loans), 10, replace=False)
+df_loans.loc[over_balance_idx, "outstanding_balance"] = df_loans.loc[over_balance_idx, "original_amount"] * np.random.uniform(1.25, 1.80, 10)
+
+# 5 filas: NULL interest_rate
+null_rate_idx = np.random.choice(len(df_loans), 5, replace=False)
+df_loans.loc[null_rate_idx, "interest_rate"] = None
+
+# 12 filas: dpd_bucket inconsistente con days_past_due
+# (e.g., days_past_due=45 pero bucket="Al_Dia")
+inconsistent_idx = np.random.choice(len(df_loans), 12, replace=False)
+for idx in inconsistent_idx:
+    actual_dpd = df_loans.loc[idx, "days_past_due"]
+    # Asignar bucket incorrecto
+    correct_bucket = df_loans.loc[idx, "dpd_bucket"]
+    wrong_options = [b for b in DPD_BUCKETS if b != correct_bucket]
+    df_loans.loc[idx, "dpd_bucket"] = np.random.choice(wrong_options)
+
+print(f"fact_cartera_creditos: {len(df_loans):,} filas")
+print(f"  Defectos DQ: 8 DPD negativos, 4 madurez < desembolso, 10 saldo > original, 5 null tasa, 12 bucket inconsistente")
+
+sdf_loans = spark.createDataFrame(df_loans)
+sdf_loans.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_cartera_creditos")
+print(f"✅ {CATALOG}.{SCHEMA}.fact_cartera_creditos escrita")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Tabla 5: fact_kpis_diarios
+
+# COMMAND ----------
+
+kpi_rows = []
+kpi_date_range = pd.date_range("2024-01-01", "2026-04-30", freq="D")
+
+for cc, info in COUNTRIES.items():
+    base_port = info["base_portfolio"]
+
+    for d in kpi_date_range:
+        # Crecimiento anual ~4%
+        years_from_start = (d - pd.Timestamp("2024-01-01")).days / 365
+        growth = 1 + 0.04 * years_from_start
+
+        # Estacionalidad mensual
+        month_mult = {1: 0.95, 2: 0.90, 3: 0.97, 4: 1.00, 5: 1.02, 6: 1.00,
+                      7: 1.03, 8: 1.01, 9: 0.98, 10: 1.00, 11: 1.04, 12: 1.08}[d.month]
+
+        noise = np.random.normal(1.0, 0.03)
+        total_port = round(base_port * growth * month_mult * noise, 2)
+
+        # NPL ratio (tasa de mora) — varía por país y tiempo
+        npl_base = {"NI": 0.042, "CR": 0.028, "HN": 0.051, "PA": 0.022, "DO": 0.055,
+                    "SV": 0.048, "GT": 0.062, "CO": 0.035}.get(cc, 0.04)
+        npl_ratio = round(npl_base + np.random.normal(0, 0.003), 4)
+        npl_ratio = max(0.005, npl_ratio)
+
+        # Desembolsos del mes
+        new_disb = round(total_port * np.random.uniform(0.008, 0.025) * month_mult, 2)
+
+        # Cobros / recuperaciones
+        collections = round(total_port * np.random.uniform(0.005, 0.015), 2)
+
+        # Provisiones
+        provision_exp = round(total_port * npl_ratio * np.random.uniform(0.15, 0.30), 2)
+
+        active_cust = int(info["customers"] * np.random.uniform(0.75, 0.95))
+        new_cust = int(np.random.uniform(0, 8))
+
+        # YoY growth disponible solo desde 2025
         yoy_growth = None
         if d.year >= 2025:
-            yoy_growth = round(np.random.normal(0.03, 0.05), 4)
+            yoy_growth = round(np.random.normal(0.04, 0.02), 4)
 
         kpi_rows.append({
-            "kpi_date": d_date,
-            "market": market_code,
-            "total_restaurants": n_restaurants,
-            "total_transactions": total_txn,
-            "total_revenue": total_rev,
-            "avg_ticket": avg_ticket,
-            "active_members": active_members,
-            "new_members": new_members,
-            "delivery_pct": delivery_pct,
-            "yoy_revenue_growth": yoy_growth,
+            "kpi_date": d.date(),
+            "country_code": cc,
+            "country_name": info["name"],
+            "total_portfolio": total_port,
+            "npl_ratio": npl_ratio,
+            "new_disbursements": new_disb,
+            "collections": collections,
+            "provision_expense": provision_exp,
+            "active_customers": active_cust,
+            "new_customers": new_cust,
+            "yoy_portfolio_growth": yoy_growth,
         })
 
 df_kpis = pd.DataFrame(kpi_rows)
 
-# ── Inject DQ issues ──
-# 20 rows: transactions = 0 but revenue > 0
-zero_txn_idx = np.random.choice(len(df_kpis), 20, replace=False)
-df_kpis.loc[zero_txn_idx, "total_transactions"] = 0
+# ── Inyectar defectos DQ ──
+# 8 filas: npl_ratio > 1.0 (imposible — mayor que la cartera total)
+invalid_npl_idx = np.random.choice(len(df_kpis), 8, replace=False)
+df_kpis.loc[invalid_npl_idx, "npl_ratio"] = np.random.uniform(1.5, 3.0, 8)
 
-# 5 rows: market = "UNKNOWN"
-unknown_idx = np.random.choice(len(df_kpis), 5, replace=False)
-df_kpis.loc[unknown_idx, "market"] = "UNKNOWN"
+# 5 filas: total_portfolio = 0 con new_disbursements > 0
+zero_port_idx = np.random.choice(len(df_kpis), 5, replace=False)
+df_kpis.loc[zero_port_idx, "total_portfolio"] = 0.0
 
-# 3 rows: yoy_revenue_growth = 999.99 (sentinel outlier)
-sentinel_idx = np.random.choice(df_kpis[df_kpis["yoy_revenue_growth"].notna()].index, 3, replace=False)
-df_kpis.loc[sentinel_idx, "yoy_revenue_growth"] = 999.99
+# 3 filas: yoy_portfolio_growth = 999.99 (outlier centinela)
+sentinel_idx = df_kpis[df_kpis["yoy_portfolio_growth"].notna()].sample(3).index
+df_kpis.loc[sentinel_idx, "yoy_portfolio_growth"] = 999.99
 
-print(f"fact_daily_kpis: {len(df_kpis)} rows")
-print(f"  DQ issues: 20 zero-txn with revenue, 5 UNKNOWN market, 3 sentinel outliers")
+# 6 filas: country_code = "DESCONOCIDO"
+unknown_idx = np.random.choice(len(df_kpis), 6, replace=False)
+df_kpis.loc[unknown_idx, "country_code"] = "DESCONOCIDO"
+
+print(f"fact_kpis_diarios: {len(df_kpis):,} filas")
+print(f"  Defectos DQ: 8 NPL>1.0, 5 portfolio=0 con desembolsos, 3 centinelas, 6 país DESCONOCIDO")
 
 sdf_kpis = spark.createDataFrame(df_kpis)
-sdf_kpis.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_daily_kpis")
-print(f"✅ {CATALOG}.{SCHEMA}.fact_daily_kpis written")
+sdf_kpis.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.fact_kpis_diarios")
+print(f"✅ {CATALOG}.{SCHEMA}.fact_kpis_diarios escrita")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Validation Summary
+# MAGIC ## Resumen de Validación
 
 # COMMAND ----------
 
-print("=" * 60)
-print("WORKSHOP DATA GENERATION — SUMMARY")
-print("=" * 60)
+print("=" * 65)
+print("GENERACIÓN DE DATOS WORKSHOP LAFISE — RESUMEN")
+print("=" * 65)
 
-tables = ["dim_restaurants", "fact_daily_sales", "fact_member_activity", "fact_promo_events", "fact_daily_kpis"]
+tables = [
+    "dim_clientes", "dim_sucursales", "fact_transacciones",
+    "fact_cartera_creditos", "fact_kpis_diarios"
+]
 for t in tables:
     count = spark.sql(f"SELECT COUNT(*) as cnt FROM {CATALOG}.{SCHEMA}.{t}").collect()[0]["cnt"]
-    print(f"  {CATALOG}.{SCHEMA}.{t}: {count:,} rows")
+    print(f"  {CATALOG}.{SCHEMA}.{t}: {count:,} filas")
 
 print()
-print("DQ Issues Summary:")
-print("  dim_restaurants: 15 null markets, 8 future dates, 12 zero coords, 5 dup IDs, 20 bad casing")
-print("  fact_daily_sales: 200 zero revenue, 50 negative tickets, 30 null dates, 40 bad dayparts")
-print("  fact_member_activity: 100 lowercase tiers, 40 negative points, 25 orphan XX, 80 ref breaks")
-print("  fact_promo_events: 3 inverted dates, 5 impossible discounts, 10 null names")
-print("  fact_daily_kpis: 20 zero-txn with revenue, 5 UNKNOWN market, 3 sentinel outliers")
+print("Defectos DQ inyectados:")
+print("  dim_clientes:         10 null country, 6 fechas futuras, 5 IDs dup, 15 segment minúsculas, 18 scores inválidos")
+print("  dim_sucursales:       8 null country, 3 IDs dup, 10 branch_type minúsculas")
+print("  fact_transacciones:   150 monto cero, 30 null fecha, 60 clientes huérfanos, 25 montos negativos")
+print("  fact_cartera_creditos: 8 DPD negativos, 4 madurez<desembolso, 10 saldo>original, 5 null tasa, 12 bucket inconsistente")
+print("  fact_kpis_diarios:    8 NPL>1.0, 5 portfolio=0, 3 centinelas, 6 país DESCONOCIDO")
 print()
-print(f"Total DQ defects: ~356")
-print("=" * 60)
-print("✅ Data generation complete. Ready for workshop.")
+print(f"Total defectos: ~382")
+print()
+print("Países LAFISE incluidos:")
+for cc, info in COUNTRIES.items():
+    print(f"  {cc}: {info['name']} — {info['customers']} clientes, {info['branches']} sucursales, ${info['base_portfolio']/1e6:.0f}M cartera")
+print("=" * 65)
+print("✅ Generación completa. Workshop listo.")
